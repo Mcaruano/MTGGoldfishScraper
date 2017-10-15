@@ -1,0 +1,3 @@
+# MTGGoldfishScraper
+
+This script is very rudimentary at the moment. It simply takes input via a "Configuration" class in the code itself in the form of a list of "desired decks" that you'd like to potentially build into. It will then scour all of the MODERN "Budget decks" on MTGGoldFish.com and determine which of those Budget decks shares the most value with the list of desired decks. It does this analysis for each deck you specify in the Desired Decks list
