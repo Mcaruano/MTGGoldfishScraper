@@ -5,9 +5,9 @@ It then scrapes all of the budget deck lists and reports back with budget decks 
 identical to one or more of your desired Modern meta decks.
 """
 
-import csv
 from datetime import datetime
 import errno
+from optparse import OptionParser
 import os
 import re
 from selenium import webdriver
@@ -29,8 +29,13 @@ CARD_QTY_KEY = 'Card Quantity'
 CARD_NAME_KEY = 'Card Name'
 CARD_PRICE_KEY = 'Individual Card Price'
 
-# Final Report dict keys
 DECK_PRICE_KEY = 'Deck Price'
+
+# Final Owned Cards Report dict keys
+OWNED_CARDS_KEY = 'Owned Cards'
+SAVED_VALUE_KEY = 'Saved Value'
+
+# Final Budget Report dict keys
 SHARED_CARDS_KEY = 'Shared Cards'
 SHARED_VALUE_KEY = 'Shared Value'
 
@@ -41,24 +46,17 @@ Simple configuration class. Contains the URLs to all desired decks, as well as t
 class Configuration(object):
     def __init__(self):
         self.match_threshold = 60
-        self.matt_desired_decks = [
+        self.desired_decks = [
                 # "https://www.mtggoldfish.com/archetype/modern-abzan#paper",
                 # "https://www.mtggoldfish.com/archetype/modern-counters-company#paper",
                 "https://www.mtggoldfish.com/archetype/modern-eldrazi-tron-26966#paper"
-            ]
-        self.mel_desired_decks = [
-                'https://www.mtggoldfish.com/archetype/modern-burn-34574#paper',
-                'https://www.mtggoldfish.com/archetype/modern-affinity-8972#paper'
             ]
 
     def get_match_threshold(self):
         return self.match_threshold
 
-    def get_matt_desired_decks(self):
-        return self.matt_desired_decks
-
-    def get_mel_desired_decks(self):
-        return self.mel_desired_decks
+    def get_desired_decks(self):
+        return self.desired_decks
 
 """
 Deck class to contain all of the information pertaining to a single deck
@@ -92,18 +90,50 @@ class Deck(object):
             print_output = print_output + "     %dx %s,\n" %(card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY])
         return print_output + "}"
 
+"""
+Parse the owned_cards.txt file and return the cards as a list of dictionaries of card records
+using CARD_QTY_KEY and CARD_NAME_KEY
+"""
+def parse_owned_cards():
+    owned_cards = []
+    script_dir = os.path.dirname(__file__)
+    owned_cards_file = open(os.path.join(script_dir, 'owned_cards.txt'))
+    for line in owned_cards_file:
+
+        # Disregard comments and empty lines
+        if line[0] == "#" or len(line) <= 1: continue
+
+        separator_index = line.find(' ')
+        if separator_index == -1: continue
+        card_quantity = line[:separator_index]
+        card_name = line[separator_index + 1:].replace('\n', '')
+
+
+        # Double-check to make sure the user hasn't entered this card in more than once. If so, we aren't going
+        # to try to resolve this for the user by making assumptions. Instead, we will point this out via a Print
+        # statement for them to resolve, and kill the script
+        for card_entry in owned_cards:
+            if card_entry[CARD_NAME_KEY] == card_name:
+                print "ERROR: \"%s\" occurs more than once in owned_cards.txt. Exiting." %(card_name)
+                sys.exit(0)
+
+        owned_cards.append({CARD_QTY_KEY: card_quantity, CARD_NAME_KEY: card_name})
+
+    return owned_cards
+
+
 
 """
 Given the desired deck URLs, parse all of the decks into Deck objects
 
-:param driver: The webdriver to use for navigating the browser
 :param deck_URLs_list: The list of deck URLs
 """
-def parse_decks_from_list_of_urls(driver, deck_URLs_list):
+def parse_decks_from_list_of_urls(deck_URLs_list):
     deck_objs_list = []
 
     for desired_deck_url in deck_URLs_list:
         deck = Deck()
+        driver = webdriver.Firefox()
         driver.get(desired_deck_url)
 
         deck.deck_url = desired_deck_url
@@ -139,12 +169,17 @@ def parse_decks_from_list_of_urls(driver, deck_URLs_list):
         deck.deck_list = deck_list
         deck.deck_price = deck_total_cost
         deck_objs_list.append(deck)
+        driver.close()
 
     return deck_objs_list
 
-
-def parse_all_budget_deck_list_URLs(driver):
+"""
+Uses the Firefox WebDriver to navigate to the Modern Budget Decks section of MTGGoldfish.com
+and parses all of the URLs for all of the Budget decks into a list.
+"""
+def parse_all_budget_deck_list_URLs():
     budget_modern_decks_url = "https://www.mtggoldfish.com/decks/budget/modern#paper"
+    driver = webdriver.Firefox()
     driver.get(budget_modern_decks_url)
 
     budget_deck_url_list = []
@@ -156,17 +191,50 @@ def parse_all_budget_deck_list_URLs(driver):
         # For some reason, the #paper landing page contains URLS for the #online
         budget_deck_url_list.append(deck_url)
 
+    driver.close()
     return budget_deck_url_list
 
+"""
+For each desired deck, we determine how many of the user's Owned Cards overlap with the deck
+and aggregate all such cards into a multi-level dictionary for eventual reporting/price analysis
+"""
+def evaluate_owned_cards(desired_decks_list, owned_cards_list):
+    owned_overlap_report = {}
+    for desired_deck in desired_decks_list:
+        owned_overlap_report[desired_deck.get_deck_name()] = {}
+
+        total_non_basics_in_desired_deck = 75
+        number_of_owned_cards_that_are_in_desired_deck = 0
+        value_reduced_by_owned_cards = 0.0
+        for desired_card_entry in desired_deck.get_deck_list():
+            desired_card_name = desired_card_entry[CARD_NAME_KEY]
+            if card_is_basic_mana(desired_card_name):
+                total_non_basics_in_desired_deck -= 1
+                continue
+
+            for owned_card_entry in owned_cards_list:
+                if owned_card_entry[CARD_NAME_KEY] == desired_card_name:
+                    if desired_card_entry[CARD_QTY_KEY] >= owned_card_entry[CARD_QTY_KEY]:
+                        number_of_owned_cards_that_are_in_desired_deck += owned_card_entry[CARD_QTY_KEY]
+                        value_reduced_by_owned_cards += float(owned_card_entry[CARD_QTY_KEY] * desired_card_entry[CARD_PRICE_KEY])
+                    else:
+                        number_of_owned_cards_that_are_in_desired_deck += desired_card_entry[CARD_QTY_KEY]
+                        value_reduced_by_owned_cards += float(desired_card_entry[CARD_QTY_KEY]) * desired_card_entry[CARD_PRICE_KEY]
+                    break
+
+        # Only bother reporting budget decks that actually overlap
+        if value_reduced_by_owned_cards > 0:
+            owned_overlap_report[desired_deck.get_deck_name()] = {DECK_PRICE_KEY: budget_deck.get_deck_price(), OWNED_CARDS_KEY: "%d/%d" %(number_of_owned_cards_that_are_in_desired_deck, total_non_basics_in_desired_deck), SAVED_VALUE_KEY: value_reduced_by_owned_cards}
 
 """
 For each desired deck, we process each budget deck to determine how many cards from each budget deck
-are present in the given desired deck. We then store 
+are present in the given desired deck. We then store them into a large multi-level dictionary for
+eventual reporting
 """
-def evaluate_decks(desired_decks_list, budget_decks_list):
-    report = {}
+def evaluate_budget_decks(desired_decks_list, budget_decks_list):
+    budget_report = {}
     for desired_deck in desired_decks_list:
-        report[desired_deck.get_deck_name()] = {}
+        budget_report[desired_deck.get_deck_name()] = {}
 
         for budget_deck in budget_decks_list:     
             total_non_basics_in_desired_deck = 75
@@ -191,22 +259,21 @@ def evaluate_decks(desired_decks_list, budget_decks_list):
 
             # Only bother reporting budget decks that actually overlap
             if value_shared_between_decks > 0:
-                report[desired_deck.get_deck_name()][budget_deck.get_deck_name()] = {DECK_PRICE_KEY: budget_deck.get_deck_price(), SHARED_CARDS_KEY: "%d/%d" %(number_of_cards_from_budget_deck_that_are_in_desired_deck, total_non_basics_in_desired_deck), SHARED_VALUE_KEY: value_shared_between_decks}
+                budget_report[desired_deck.get_deck_name()][budget_deck.get_deck_name()] = {DECK_PRICE_KEY: budget_deck.get_deck_price(), SHARED_CARDS_KEY: "%d/%d" %(number_of_cards_from_budget_deck_that_are_in_desired_deck, total_non_basics_in_desired_deck), SHARED_VALUE_KEY: value_shared_between_decks}
 
         # Sort entries by value for this particular desired_deck now that all of the budget decks have been processed
-        budget_decks_sorted_by_desc_value_as_list = sorted(report[desired_deck.get_deck_name()].iteritems(), key=lambda (k,v): v[SHARED_VALUE_KEY], reverse=True)
+        budget_decks_sorted_by_desc_value_as_list = sorted(budget_report[desired_deck.get_deck_name()].iteritems(), key=lambda (k,v): v[SHARED_VALUE_KEY], reverse=True)
 
         # Only keep the top 5 for each
-        report[desired_deck.get_deck_name()] = budget_decks_sorted_by_desc_value_as_list[:5]
+        budget_report[desired_deck.get_deck_name()] = budget_decks_sorted_by_desc_value_as_list[:5]
 
-    return report
+    return budget_report
 
 """
 Given a final evaluation report, iterate over each entry and print it out to the terminal
 in a clear way
 """
-def print_evaluation_report(user_name, desired_decks_list, evaluation_report):
-    print "\n======== %s's Report ========" %(user_name)
+def print_evaluation_report(desired_decks_list, evaluation_report):
     for desired_deck_name_key in evaluation_report:
 
         # This is a super clumsy way to fetch the price of the original deck
@@ -222,42 +289,54 @@ def print_evaluation_report(user_name, desired_decks_list, evaluation_report):
             print "      Value shared: $%.2f" %(budget_deck_list_record[1][SHARED_VALUE_KEY])
 
 
+"""
+Simple helper method to determine whether or not a card is a Basic Mana card using
+string comparison of the Card's name. We use this because we simply don't want to evaluate
+the price of basic lands and such in our analysis.
+"""
 def card_is_basic_mana(card_name):
     return card_name in ["Mountain", "Swamp", "Plains", "Island", "Forest"]
 
 if __name__ == "__main__":
-    start_time = time.time()
-
     print ""
     print "====================================================="
     print "================ Beginning Fresh Run ================"
     print "====================================================="
 
+    # Since parsing Budget decks takes FOREVER, we only do it if the user specifies the -b flag
+    parser = OptionParser()
+    parser.add_option("-b", "--budget", dest="parse_budget", help="Parse all Modern Budget decks from MTGGoldfish. This can take 10 minutes or more", action='store_const', const=True)
+    (options, args) = parser.parse_args()
+    
+    owned_cards = parse_owned_cards()
+    
     config = Configuration()
-    driver = webdriver.Firefox()
 
-    print "Fetching desired decks from browser..."
-    matt_desired_decks = parse_decks_from_list_of_urls(driver, config.get_matt_desired_decks())
-    # mel_desired_decks = parse_decks_from_list_of_urls(driver, config.get_mel_desired_decks())
+    start_time = time.time()
+    print "Fetching Deck Lists of desired decks from browser..."
+    desired_decks = parse_decks_from_list_of_urls(config.get_desired_decks())
 
-    print "Fetching budget decks from browser..."
-    # budget_decks_url_list = parse_all_budget_deck_list_URLs(driver)
-    budget_decks_url_list = ['https://www.mtggoldfish.com/deck/784979$paper']
-    budget_decks = parse_decks_from_list_of_urls(driver, budget_decks_url_list)
-    driver.close()
+    if options.parse_budget == True:
+        print "Budget flag set. Fetching Deck Lists of all Modern Budget decks from browser for budget analysis..."
+        # budget_decks_url_list = parse_all_budget_deck_list_URLs()
+        budget_decks_url_list = ['https://www.mtggoldfish.com/deck/784979$paper']
+        budget_decks = parse_decks_from_list_of_urls(budget_decks_url_list)
 
-    print "Done fetching decks from browser. Browser fetch took %s seconds" %(time.time() - start_time)
+    print "Done fetching all Deck Lists. Browser fetch took %.2f seconds" %(time.time() - start_time)
 
-    print "\nBeginning evaluation..."
-    matt_deck_report = evaluate_decks(matt_desired_decks, budget_decks)
-    # mel_deck_report = evaluate_decks(mel_desired_decks, budget_decks)
+    print "\nBeginning Owned Cards evaluations..."
+    owned_cards_overlap_report = evaluate_owned_cards(desired_decks, owned_cards)
+
+    if options.parse_budget == True:
+        print "\nBeginning Budget Deck List evaluations..."
+        budget_deck_report = evaluate_budget_decks(desired_decks, budget_decks)
 
     print ""
     print "========================================="
-    print "================ Report ================"
+    print "================ Report ================="
     print "========================================="
 
-    print_evaluation_report('Matt', matt_desired_decks, matt_deck_report)
-    # print_evaluation_report('Mel', mel_desired_decks, mel_deck_report)
+    if options.parse_budget == True:
+        print_evaluation_report(desired_decks, budget_deck_report)
 
     sys.exit(0)

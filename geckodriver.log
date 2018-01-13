@@ -1,0 +1,53 @@
+1515794837581	geckodriver	INFO	geckodriver 0.18.0
+1515794837584	geckodriver	INFO	Listening on 127.0.0.1:57143
+1515794838646	geckodriver::marionette	INFO	Starting browser /Applications/Firefox.app/Contents/MacOS/firefox-bin with args ["-marionette"]
+1515794840362	Marionette	INFO	Listening on port 57154
+1515794840487	Marionette	WARN	TLS certificate errors will be ignored for this session
+2018-01-12 14:07:21.807 plugin-container[40368:16935686] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x975b, name = 'com.apple.tsm.portname'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:07:21.807 plugin-container[40368:16935686] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x9927, name = 'com.apple.CFPasteboardClient'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:07:21.807 plugin-container[40368:16935686] Failed to allocate communication port for com.apple.CFPasteboardClient; this is likely due to sandbox restrictions
+JavaScript error: https://cdm.cursecdn.com/js/mtggoldfish/cdmfactorem_min.js?misc=1515794842653, line 3: TypeError: e.seatbid is undefined
+[Child 40368] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+[Child 40368] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+1515794846856	geckodriver	INFO	geckodriver 0.18.0
+1515794846859	geckodriver	INFO	Listening on 127.0.0.1:57464
+1515794847927	geckodriver::marionette	INFO	Starting browser /Applications/Firefox.app/Contents/MacOS/firefox-bin with args ["-marionette"]
+1515794848735	Marionette	INFO	Listening on port 57475
+1515794848869	Marionette	WARN	TLS certificate errors will be ignored for this session
+2018-01-12 14:07:30.078 plugin-container[40441:16936481] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x9343, name = 'com.apple.tsm.portname'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:07:30.078 plugin-container[40441:16936481] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x9717, name = 'com.apple.CFPasteboardClient'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:07:30.079 plugin-container[40441:16936481] Failed to allocate communication port for com.apple.CFPasteboardClient; this is likely due to sandbox restrictions
+JavaScript error: https://cdm.cursecdn.com/js/mtggoldfish/cdmfactorem_min.js?misc=1515794850993, line 3: TypeError: e.seatbid is undefined
+[Child 40441] WARNING: pipe error: Broken pipe: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/chromium/src/chrome/common/ipc_channel_posix.cc, line 685
+[Child 40441] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+[Child 40441] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+1515795191587	geckodriver	INFO	geckodriver 0.18.0
+1515795191590	geckodriver	INFO	Listening on 127.0.0.1:58516
+1515795192641	geckodriver::marionette	INFO	Starting browser /Applications/Firefox.app/Contents/MacOS/firefox-bin with args ["-marionette"]
+1515795193402	Marionette	INFO	Listening on port 58527
+1515795193503	Marionette	WARN	TLS certificate errors will be ignored for this session
+2018-01-12 14:13:14.639 plugin-container[42717:16942844] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x945b, name = 'com.apple.tsm.portname'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:13:14.640 plugin-container[42717:16942844] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x951b, name = 'com.apple.CFPasteboardClient'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:13:14.640 plugin-container[42717:16942844] Failed to allocate communication port for com.apple.CFPasteboardClient; this is likely due to sandbox restrictions
+JavaScript error: https://cdm.cursecdn.com/js/mtggoldfish/cdmfactorem_min.js?misc=1515795195470, line 3: TypeError: e.seatbid is undefined
+[Child 42717] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+[Child 42717] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+1515795198248	geckodriver	INFO	geckodriver 0.18.0
+1515795198267	geckodriver	INFO	Listening on 127.0.0.1:58805
+1515795199297	geckodriver::marionette	INFO	Starting browser /Applications/Firefox.app/Contents/MacOS/firefox-bin with args ["-marionette"]
+1515795200056	Marionette	INFO	Listening on port 58816
+1515795200160	Marionette	WARN	TLS certificate errors will be ignored for this session
+2018-01-12 14:13:21.369 plugin-container[42727:16943497] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x9343, name = 'com.apple.tsm.portname'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:13:21.370 plugin-container[42727:16943497] *** CFMessagePort: bootstrap_register(): failed 1100 (0x44c) 'Permission denied', port = 0x4813, name = 'com.apple.CFPasteboardClient'
+See /usr/include/servers/bootstrap_defs.h for the error codes.
+2018-01-12 14:13:21.370 plugin-container[42727:16943497] Failed to allocate communication port for com.apple.CFPasteboardClient; this is likely due to sandbox restrictions
+JavaScript error: https://cdm.cursecdn.com/js/mtggoldfish/cdmfactorem_min.js?misc=1515795202077, line 3: TypeError: e.seatbid is undefined
+[Child 42727] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
+[Child 42727] ###!!! ABORT: Aborting on channel error.: file /builds/slave/m-esr52-m64-000000000000000000/build/src/ipc/glue/MessageChannel.cpp, line 2152
