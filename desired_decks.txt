@@ -1,0 +1,8 @@
+# This is where you list the URLs for the decks that you'd want to work towards building. The entire point
+# of this script is to provide analysis for eventually building into the decks listed here, whether it's
+# determining which Budget decks are the best starting points (have the most card overlap), or analyzing
+# how many of your currently-owned cards (listed in owned_cards.txt) are used in these decks, as well as
+# how much money those cards are worth. I've provided a deck URL as an example below.
+# Any line in this file beginning with a "#" will not be parsed.
+
+https://www.mtggoldfish.com/archetype/modern-grixis-death-s-shadow#paper
