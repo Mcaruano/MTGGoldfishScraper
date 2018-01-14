@@ -280,7 +280,16 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
                 card_name = columns[NAME_INDEX].get_attribute('textContent').replace('\n', '')
                 individual_card_price = float(columns[PRICE_INDEX].get_attribute('textContent').replace('\n', '')) / float(card_quantity)
                 deck_total_cost += float(columns[PRICE_INDEX].get_attribute('textContent').replace('\n', ''))
-                deck_list.append({CARD_QTY_KEY: card_quantity, CARD_NAME_KEY: card_name, CARD_PRICE_KEY: individual_card_price})
+
+                # It's possible for a card to appear in the list twice if it is present in both the main deck and the sideboard.
+                # If this happens, we need to just update the Quantity and Price of the existing record
+                record_already_exist = False
+                for entry in deck_list:
+                    if entry[CARD_NAME_KEY] == card_name:
+                        record_already_exist = True
+                        entry[CARD_QTY_KEY] += card_quantity
+                if not record_already_exist:
+                    deck_list.append({CARD_QTY_KEY: card_quantity, CARD_NAME_KEY: card_name, CARD_PRICE_KEY: individual_card_price})
 
 
         deck.deck_list = deck_list
@@ -335,7 +344,6 @@ The final report is of the format:
 def evaluate_owned_cards(desired_decks_list, owned_cards_list):
     owned_overlap_report = {}
     for desired_deck in desired_decks_list:
-        owned_overlap_report[desired_deck.get_deck_name()] = {}
         owned_cards_that_overlap = []
 
         total_non_basics_in_desired_deck = 75
@@ -350,17 +358,18 @@ def evaluate_owned_cards(desired_decks_list, owned_cards_list):
             for owned_card_entry in owned_cards_list:
                 if owned_card_entry[CARD_NAME_KEY].lower() == desired_card_name.lower():
                     if desired_card_entry[CARD_QTY_KEY] >= owned_card_entry[CARD_QTY_KEY]:
-                        owned_cards_that_overlap.append({CARD_NAME_KEY: desired_card_name, CARD_QTY_KEY: owned_card_entry[CARD_QTY_KEY]})
                         number_of_owned_cards_that_are_in_desired_deck += owned_card_entry[CARD_QTY_KEY]
                         value_reduced_by_owned_cards += float(owned_card_entry[CARD_QTY_KEY] * desired_card_entry[CARD_PRICE_KEY])
+                        owned_cards_that_overlap.append({CARD_NAME_KEY: desired_card_name, CARD_QTY_KEY: owned_card_entry[CARD_QTY_KEY], CARD_PRICE_KEY: float(owned_card_entry[CARD_QTY_KEY] * desired_card_entry[CARD_PRICE_KEY])})
                     else:
-                        owned_cards_that_overlap.append({CARD_NAME_KEY: desired_card_name, CARD_QTY_KEY: desired_card_entry[CARD_QTY_KEY]})
                         number_of_owned_cards_that_are_in_desired_deck += desired_card_entry[CARD_QTY_KEY]
                         value_reduced_by_owned_cards += float(desired_card_entry[CARD_QTY_KEY]) * desired_card_entry[CARD_PRICE_KEY]
+                        owned_cards_that_overlap.append({CARD_NAME_KEY: desired_card_name, CARD_QTY_KEY: desired_card_entry[CARD_QTY_KEY], CARD_PRICE_KEY: float(desired_card_entry[CARD_QTY_KEY]) * desired_card_entry[CARD_PRICE_KEY]})
                     break
 
         # Only bother reporting budget decks that actually overlap
         if value_reduced_by_owned_cards > 0:
+            owned_overlap_report[desired_deck.get_deck_name()] = {}
             owned_overlap_report[desired_deck.get_deck_name()] = {OWNED_CARDS_KEY: "%d/%d" %(number_of_owned_cards_that_are_in_desired_deck, total_non_basics_in_desired_deck), SAVED_VALUE_KEY: value_reduced_by_owned_cards, CARD_LIST_KEY: owned_cards_that_overlap}
 
     return owned_overlap_report
@@ -373,7 +382,6 @@ eventual reporting
 def evaluate_budget_decks(desired_decks_list, budget_decks_list):
     budget_report = {}
     for desired_deck in desired_decks_list:
-        budget_report[desired_deck.get_deck_name()] = {}
 
         for budget_deck in budget_decks_list:
             total_non_basics_in_desired_deck = 75
@@ -398,6 +406,7 @@ def evaluate_budget_decks(desired_decks_list, budget_decks_list):
 
             # Only bother reporting budget decks that actually overlap
             if value_shared_between_decks > 0:
+                budget_report[desired_deck.get_deck_name()] = {}
                 budget_report[desired_deck.get_deck_name()][budget_deck.get_deck_name()] = {DECK_PRICE_KEY: budget_deck.get_deck_price(), SHARED_CARDS_KEY: "%d/%d" %(number_of_cards_from_budget_deck_that_are_in_desired_deck, total_non_basics_in_desired_deck), SHARED_VALUE_KEY: value_shared_between_decks}
 
         # Sort entries by value for this particular desired_deck now that all of the budget decks have been processed
@@ -414,18 +423,21 @@ def print_owned_cards_evaluation_report(desired_decks_list, owned_cards_overlap_
     for desired_deck_name_key in owned_cards_overlap_report:
 
         # This is a super clumsy way to fetch the price of the original deck
+        desired_deck_total_cost = 0.0
         for desired_deck_obj in desired_decks_list:
             if desired_deck_obj.get_deck_name() == desired_deck_name_key:
-                print "\n== Owned cards that are used in \"%s\" ($%.2f) ==" %(desired_deck_name_key, desired_deck_obj.get_deck_price())
+                desired_deck_total_cost = desired_deck_obj.get_deck_price()
+                print "\n== Owned cards that are used in \"%s\" ($%.2f) ==" %(desired_deck_name_key, desired_deck_total_cost)
 
         # The owned_cards_overlap_report is of the format:
         # {'Saved Value': 265.96, 'Card List': [{'Card Name': u'Scalding Tarn', 'Card Quantity': 4}], 'Owned Cards': '4/73'}
         specific_owned_cards_report = owned_cards_overlap_report[desired_deck_name_key]
         print "   Number of cards owned: %s" %(specific_owned_cards_report[OWNED_CARDS_KEY])
         print "   Value saved: $%.2f" %(specific_owned_cards_report[SAVED_VALUE_KEY])
+        print "   Remaining cost: $%.2f" %(desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY])
         print "   List of specific cards:"
         for card_entry in specific_owned_cards_report[CARD_LIST_KEY]:
-            print "      %sx %s" %(card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY])
+            print "      %sx %s ($%.2f)" %(card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY])
 
 """
 Give a final evaluation report for the Budget decks by iterating
