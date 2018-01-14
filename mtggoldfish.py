@@ -248,8 +248,8 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
         try:
             driver.get(deck_url)
         except:
-            print "[ERROR]: Failed to navigate to \"%s\"" %(deck_url)
-            print "Check your internet connection. Also note that sometimes MTGGoldfish.com experiences issues, try navigating to this URL yourself and see if it works. Try running the script again."
+            print "   [ERROR]: Failed to navigate to \"%s\"" %(deck_url)
+            print "   Check your internet connection. Also note that sometimes MTGGoldfish.com experiences issues, try navigating to this URL yourself and see if it works. Try running the script again."
             sys.exit(0)
 
         deck.deck_url = deck_url
