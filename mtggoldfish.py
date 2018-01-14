@@ -382,6 +382,7 @@ eventual reporting
 def evaluate_budget_decks(desired_decks_list, budget_decks_list):
     budget_report = {}
     for desired_deck in desired_decks_list:
+        budget_report[desired_deck.get_deck_name()] = {}
 
         for budget_deck in budget_decks_list:
             total_non_basics_in_desired_deck = 75
@@ -406,7 +407,6 @@ def evaluate_budget_decks(desired_decks_list, budget_decks_list):
 
             # Only bother reporting budget decks that actually overlap
             if value_shared_between_decks > 0:
-                budget_report[desired_deck.get_deck_name()] = {}
                 budget_report[desired_deck.get_deck_name()][budget_deck.get_deck_name()] = {DECK_PRICE_KEY: budget_deck.get_deck_price(), SHARED_CARDS_KEY: "%d/%d" %(number_of_cards_from_budget_deck_that_are_in_desired_deck, total_non_basics_in_desired_deck), SHARED_VALUE_KEY: value_shared_between_decks}
 
         # Sort entries by value for this particular desired_deck now that all of the budget decks have been processed
