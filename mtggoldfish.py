@@ -30,6 +30,7 @@ CARD_PRICE_KEY = 'Individual Card Price'
 
 # Final Owned Cards Report dict keys
 CARD_LIST_KEY = 'Card List'
+NO_OWNED_OVERLAP_FLAG = 'No Overlap'
 OWNED_CARDS_KEY = 'Owned Cards'
 SAVED_VALUE_KEY = 'Saved Value'
 
@@ -367,11 +368,12 @@ def evaluate_owned_cards(desired_decks_list, owned_cards_list):
                         owned_cards_that_overlap.append({CARD_NAME_KEY: desired_card_name, CARD_QTY_KEY: desired_card_entry[CARD_QTY_KEY], CARD_PRICE_KEY: float(desired_card_entry[CARD_QTY_KEY]) * desired_card_entry[CARD_PRICE_KEY]})
                     break
 
-        # Only bother reporting budget decks that actually overlap
+        # If we actually own some cards in this desired_deck, save the report. If not, we set the NO_OWNED_OVERLAP_FLAG so that our final report printing can know
+        owned_overlap_report[desired_deck.get_deck_name()] = {}
         if value_reduced_by_owned_cards > 0:
-            owned_overlap_report[desired_deck.get_deck_name()] = {}
             owned_overlap_report[desired_deck.get_deck_name()] = {OWNED_CARDS_KEY: "%d/%d" %(number_of_owned_cards_that_are_in_desired_deck, total_non_basics_in_desired_deck), SAVED_VALUE_KEY: value_reduced_by_owned_cards, CARD_LIST_KEY: owned_cards_that_overlap}
-
+        else:
+            owned_overlap_report[desired_deck.get_deck_name()] = {SAVED_VALUE_KEY: NO_OWNED_OVERLAP_FLAG}
     return owned_overlap_report
 
 """
@@ -418,6 +420,7 @@ def evaluate_budget_decks(desired_decks_list, budget_decks_list):
     return budget_report
 
 """
+Give a final evaluation report for the cards that you own
 """
 def print_owned_cards_evaluation_report(desired_decks_list, owned_cards_overlap_report):
     for desired_deck_name_key in owned_cards_overlap_report:
@@ -432,12 +435,15 @@ def print_owned_cards_evaluation_report(desired_decks_list, owned_cards_overlap_
         # The owned_cards_overlap_report is of the format:
         # {'Saved Value': 265.96, 'Card List': [{'Card Name': u'Scalding Tarn', 'Card Quantity': 4}], 'Owned Cards': '4/73'}
         specific_owned_cards_report = owned_cards_overlap_report[desired_deck_name_key]
-        print "   Number of cards owned: %s" %(specific_owned_cards_report[OWNED_CARDS_KEY])
-        print "   Value saved: $%.2f" %(specific_owned_cards_report[SAVED_VALUE_KEY])
-        print "   Remaining cost: $%.2f" %(desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY])
-        print "   List of specific cards:"
-        for card_entry in specific_owned_cards_report[CARD_LIST_KEY]:
-            print "      %sx %s ($%.2f)" %(card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY])
+        if specific_owned_cards_report[SAVED_VALUE_KEY] == NO_OWNED_OVERLAP_FLAG:
+            print "   None of the cards you own overlap with this deck :("
+        else:
+            print "   Number of cards owned: %s" %(specific_owned_cards_report[OWNED_CARDS_KEY])
+            print "   Value saved: $%.2f" %(specific_owned_cards_report[SAVED_VALUE_KEY])
+            print "   Remaining cost: $%.2f" %(desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY])
+            print "   List of specific cards:"
+            for card_entry in specific_owned_cards_report[CARD_LIST_KEY]:
+                print "      %sx %s ($%.2f)" %(card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY])
 
 """
 Give a final evaluation report for the Budget decks by iterating
