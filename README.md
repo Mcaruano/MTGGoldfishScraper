@@ -39,12 +39,13 @@ Specifying the "-b" flag informs the script to perform an analysis of all of the
 
 ```bash
 python mtggoldfish.py -u
+python mtggoldfish.py -b -u
 ```
-Specifying the "-u" flag informs the script to update all of the decks in the cache. Since the web-fetch is what takes the most time, by far, a Budget Analysis and Owned Cards Analysis is also provided. Specifically, the following actions will be performed:
-1. All decks listed in *desired_decks.txt* will be parsed from MTGGoldfish.com. **This will disregard any cached data.**
-2. All Modern Budget decks from https://www.mtggoldfish.com/decks/budget/modern#paper will be parsed. **This will disregard any cached data.**
+Specifying the "-u" flag informs the script to ignore any and all cached deck data for this run, and instead fetch fresh data. This flag can be tacked onto either the default (Owned Cards) analysis, or the Budget Deck analysis. Specifically, the following actions will be performed:
+1. All decks listed in *desired_decks.txt* will be parsed from MTGGoldfish.com. **This will disregard any cached data and perform a new fetch.**
+2. If the "-b" flag is also set, all Modern Budget decks from https://www.mtggoldfish.com/decks/budget/modern#paper will be parsed. **This will disregard any cached data and perform a new fetch.**
 3. For each deck listed in *desired_decks.txt*, a report will be generated using the information in *owned_cards.txt*, if any. The report will tell you how many cards you already own in each deck in *desired_decks.txt*, how much paper value that translates to, as well as list the quantities and names of those cards.
-4. For each deck listed in *desired_decks.txt*, a report will be generated listing the top-five Budget Modern decks that overlap the most (according to paper value), sorted descending. It will list how much value overlaps, as well as the number of cards. This will not actually list the cards, however, as that would generate excessive output.
+4. If the "-b" flag is set, for each deck listed in *desired_decks.txt*, a report will be generated listing the top-five Budget Modern decks that overlap the most (according to paper value), sorted descending. It will list how much value overlaps, as well as the number of cards. This will not actually list the cards, however, as that would generate excessive output.
 
 # Example Output
 This is an example of a run with the "-b" flag set. In this example, all of the deck data had already been cached from a prior run.
