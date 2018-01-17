@@ -2,3 +2,5 @@
 geckodriver.log
 deck_cache
 deck_report*
+owned_cards.txt
+desired_decks.txt
