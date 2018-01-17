@@ -1,6 +1,6 @@
 # This is where you can list cards that you own so that they can be taken into consideration
 # for the final deck reporting. Any line in this file beginning with a "#" will not be parsed.
-# Each entry must be in the following format: <quantity> <card_name>.
+# Each entry must be in the following format: <quantity> <card_name> (with a SPACE, not a TAB, in between)
 # No quotes. No hyphens. Capitalization doesn't matter. I've provided an example for your reference
 # of a card that doesn't exist.
 

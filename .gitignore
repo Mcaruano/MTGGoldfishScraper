@@ -1,2 +1,4 @@
+.DS_Store
 geckodriver.log
 deck_cache
+deck_report*
