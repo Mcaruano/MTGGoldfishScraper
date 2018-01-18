@@ -295,11 +295,18 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
                 card_name = columns[NAME_INDEX].get_attribute('textContent').replace('\n', '')
 
                 # We don't care about Basic Mana in any analysis.
-                if card_name.lower() in ["mountain", "swamp", "plains", "island", "forest"]: continue
+                if card_name.lower() in ["mountain", "swamp", "plains", "island", "forest"]:
+                    continue
 
-                card_quantity = int(columns[QTY_INDEX].get_attribute('textContent').replace('\n', ''))
-                individual_card_price = float(columns[PRICE_INDEX].get_attribute('textContent').replace('\n', '')) / float(card_quantity)
-                deck_total_cost += float(columns[PRICE_INDEX].get_attribute('textContent').replace('\n', ''))
+                card_quantity_string = columns[QTY_INDEX].get_attribute('textContent').replace('\n', '')
+                card_price_string = columns[PRICE_INDEX].get_attribute('textContent').replace('\n', '')
+                if card_quantity_string == '':
+                    card_quantity_string = '1'
+                if card_price_string == '':
+                    card_price_string = '0'
+                card_quantity = int(card_quantity_string)
+                individual_card_price = float(card_price_string) / float(card_quantity)
+                deck_total_cost += float(card_price_string)
 
                 # It's possible for a card to appear in the list twice if it is present in both the main deck and the sideboard.
                 # If this happens, we need to just update the Quantity and Price of the existing record
@@ -450,7 +457,7 @@ def evaluate_modern_metagame_decks(modern_metagame_decks, owned_cards):
             modern_metagame_deck_recommendation_report[modern_meta_deck.get_deck_name()] = {OWNED_CARDS_KEY: "%d/%d" %(number_of_owned_cards_that_are_in_modern_meta_deck, modern_meta_deck.get_deck_size()), SAVED_VALUE_KEY: value_of_meta_deck_owned, CARD_LIST_KEY: specific_cards_owned_in_meta_deck, DECK_PRICE_KEY: modern_meta_deck.get_deck_price()}
 
     # Sort entries by value descending
-    modern_metagame_decks_sorted_by_desc_value_saved_as_list = sorted(modern_metagame_deck_recommendation_report.iteritems(), key=lambda kv: kv[1][SAVED_VALUE_KEY], reverse=True)
+    modern_metagame_decks_sorted_by_desc_value_saved_as_list = sorted(six.iteritems(modern_metagame_deck_recommendation_report), key=lambda kv: kv[1][SAVED_VALUE_KEY], reverse=True)
 
     # Return only the top 15
     if len(modern_metagame_decks_sorted_by_desc_value_saved_as_list) > 15:
