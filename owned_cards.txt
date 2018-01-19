@@ -5,3 +5,6 @@
 # of a card that doesn't exist.
 
 4 name of card that doesn't exist
+1 True-Name Nemesis
+3 Badlands
+2 Chromatic Star

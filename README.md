@@ -80,7 +80,7 @@ python mtggoldfish.py -b -o
 python mtggoldfish.py -r -o
 python mtggoldfish.py -b -r -u -o -f
 ```
-Specifying the "-o" flag informs the script to do all of the same analyses it would otherwise do, except use the online (tix) values instead of paper (dollar) values. If you don't pass this flag, paper values will be used. This flag can be combined with any variation of the other flags. **IMPORTANT:** If you already have cached deck data with the paper values, you will need to use the "-u" during your first run with this flag so the actual tix values will be pulled. This is also inversely true.
+Specifying the "-o" flag informs the script to do all of the same analyses it would otherwise do, except use the online (tix) values instead of paper (dollar) values. If you don't pass this flag, paper values will be used. This flag can be combined with any variation of the other flags. **IMPORTANT:** If you already have cached deck data with the paper values, you will need to use the "-u" flag during your first run with this flag set so that the actual tix values will be pulled. This is also inversely true.
 
 ```bash
 python mtggoldfish.py -F <FORMAT>
@@ -88,7 +88,7 @@ python mtggoldfish.py -b -F <FORMAT>
 python mtggoldfish.py -r -F <FORMAT>
 python mtggoldfish.py -b -r -F <FORMAT> -u -f -o
 ```
-Specifying the "-F" (**uppercase** F) flag informs the script to do all of the same analyses it would otherwise do as specified by your other flags, except it will perform them on the MTG game Format of your choice. **If this flag is not set, Modern will be the format analyzed** Valid game formats are any of the formats available on MTGGoldfish.com, specifically: Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders. This value is *case-insensitive*. This flag can be combined with any variation of the other flags.
+Specifying the "-F" (**uppercase** F) flag informs the script to do all of the same analyses it would otherwise do as specified by your other flags, except it will perform them on the MTG game Format of your choice. **If this flag is not set, Modern will be the format analyzed**. Valid game formats are any of the formats available on MTGGoldfish.com, specifically: Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders. This value is *case-insensitive*. This flag can be combined with any variation of the other flags.
 
 # Example Output
 This is an example of a run with the "-b" and "-r" flags set. In this example, all of the deck data had already been cached from a prior run.

@@ -5,4 +5,4 @@
 # how much money those cards are worth. I've provided a deck URL as an example below.
 # Any line in this file beginning with a "#" will not be parsed.
 
-https://www.mtggoldfish.com/archetype/modern-grixis-death-s-shadow#paper
+https://www.mtggoldfish.com/archetype/modern-grixis-death-s-shadow#online
