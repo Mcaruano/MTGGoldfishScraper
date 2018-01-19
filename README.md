@@ -1,5 +1,5 @@
 # MTGGoldfishScraper
-The entire point of this script is to help you determine how close you are to building the Modern Metagame decks that interest you based on the cards you currently own, as well as showing you the top five Modern Budget decks that share the most value (paper price) with those Modern Metagame decks. MTGGoldfish.com is the source for all of the deck information.
+The entire point of this script is to help you determine how close you are to building the Metagame decks in the Magic Format of your choice (Modern, Standard, Commander, etc) that interest you based on the cards you currently own, as well as showing you the top five Budget decks in that Format that share the most value (paper price) with those Modern Metagame decks. MTGGoldfish.com is the source for all of the deck information.
 
 # Setup
 Download all of the files to the *same* directory. Namely, **mtggoldfish.py**, **owned_cards.txt**, and **desired_decks.txt**. It doesn't matter if you do proper git things and clone this repository, or if you simply copy and paste the files, the important thing is that they must all be in the same directory on your computer.
@@ -19,8 +19,8 @@ At the time of writing this I can't say that I support Windows. However, the scr
 # Usage
 ## Configuration
 This script utilizes two separate configuration files:
-* **desired_decks.txt** - This is where you list the **URLs** of the Modern Metagame decks you're interested in building towards. These URLs *must* be links to decks in the "Modern" sub-section of the "Metagame" decks section on MTGGoldfish.com, as this script does HTML parsing based on the specific layouts/elements of these pages. One URL is provided as an example. Having URLs here is required in order to perform the "Owned Cards" or "Budget Deck" analyses.
-* **owned_cards.txt** - This is where you can list the cards you own as well as their quantities. Obviously, you shouldn't be listing all of the cards you own here. Think of it this way: if you can say *"this card is worth more than a few dollars and I'm pretty sure it's used somewhere in the Modern meta"* about a card that you own, you should list it in owned_cards.txt. One example (of a card that doesn't exist) is provided for syntax.
+* **desired_decks.txt** - This is where you list the **URLs** of the Modern (or the format specified via the -F flag) Metagame decks you're interested in building towards. These URLs *must* be links to decks in the "Modern" sub-section of the "Metagame" decks section on MTGGoldfish.com, as this script does HTML parsing based on the specific layouts/elements of these pages. One URL is provided as an example. Having URLs here is required in order to perform the "Owned Cards" or "Budget Deck" analyses.
+* **owned_cards.txt** - This is where you can list the cards you own as well as their quantities. Obviously, you shouldn't be listing all of the cards you own here. Think of it this way: if you can say *"this card is worth more than a few dollars and I'm pretty sure it's used somewhere in the Meta that I want to have analyzed"* about a card that you own, you should list it in owned_cards.txt. One example (of a card that doesn't exist) is provided for syntax.
 
 ## Caching
 This script utilizes local caching of deck data so that web-scraping is not required on each run, as the web-scraping can take 15 minutes or more to fetch all deck data for the Budget decks and the desired decks (depending on how many desired decks you list). When the script is run, if any cached decks are older than 30 days, a warning message is displayed recommending that you update your deck data. Deck data can be updated via the "-u" flag.
@@ -48,31 +48,47 @@ python mtggoldfish.py -b
 ```
 Specifying the "-b" flag informs the script to perform an analysis of all of the Budget decks on MTGGoldfish.com in addition to the Owned Cards analysis. Specifically, the following actions will be performed:
 1. All decks listed in *desired_decks.txt* will be parsed from MTGGoldfish.com. Cached data will be used instead for any decks that have been previously fetched.
-2. All Modern Budget decks from https://www.mtggoldfish.com/decks/budget/modern#paper will be parsed. Cached data will be used instead for any decks that have been previously fetched.
+2. All Modern (or the format specified via the -F flag) Budget decks from https://www.mtggoldfish.com/decks/budget/modern#paper will be parsed. Cached data will be used instead for any decks that have been previously fetched.
 3. For each deck listed in *desired_decks.txt*, a report will be generated using the information in *owned_cards.txt*, if any. The report will tell you how many cards you already own in each deck in *desired_decks.txt*, how much paper value that translates to, as well as list the quantities and names of those cards.
-4. For each deck listed in *desired_decks.txt*, a report will be generated listing the top-five Budget Modern decks that overlap the most (according to paper value), sorted descending. It will list how much value overlaps, as well as the number of cards. This will not actually list the cards, however, as that would generate excessive output. The report will, however, use any cards listed in *owned_cards.txt* to generate a report of how many cards from each budget deck you already own, together with their value and a full list of the specific cards.
+4. For each deck listed in *desired_decks.txt*, a report will be generated listing the top-five Budget Modern (or the format specified via the -F flag) decks that overlap the most (according to paper value), sorted descending. It will list how much value overlaps, as well as the number of cards. This will not actually list the cards, however, as that would generate excessive output. The report will, however, use any cards listed in *owned_cards.txt* to generate a report of how many cards from each budget deck you already own, together with their value and a full list of the specific cards.
 
 ```bash
 python mtggoldfish.py -r
 ```
-Specifying the "-r" flag informs the script to parse all of the Modern Metagame decks listed on MTGGoldfish.com and analyze the cards listed in *owned_cards.txt* to inform you the top 15 decks in the current Modern Metagame that you are closest to completing (according to Paper Value). It does this in addition to the Owned Cards analysis from the default script behavior. Specifically, the following actions will be performed:
+Specifying the "-r" flag informs the script to parse all of the Modern (or the format specified via the -F flag) Metagame decks listed on MTGGoldfish.com and analyze the cards listed in *owned_cards.txt* to inform you the top 15 decks in the current Modern (or the format specified via the -F flag) Metagame that you are closest to completing (according to Paper Value). It does this in addition to the Owned Cards analysis from the default script behavior. Specifically, the following actions will be performed:
 1. All decks listed in *desired_decks.txt* will be parsed from MTGGoldfish.com. Cached data will be used instead for any decks that have been previously fetched.
-2. All Modern Metagame decks from https://www.mtggoldfish.com/metagame/modern/full#paper will be parsed. Cached data will be used instead for any decks that have been previously fetched.
+2. All Modern (or the format specified via the -F flag) Metagame decks from https://www.mtggoldfish.com/metagame/modern/full#paper will be parsed. Cached data will be used instead for any decks that have been previously fetched.
 3. For each deck listed in *desired_decks.txt*, a report will be generated using the information in *owned_cards.txt*. The report will tell you how many cards you already own in each deck in *desired_decks.txt*, how much paper value that translates to, as well as list the quantities and names of those cards.
-4. A report will be generated listing the top 15 Modern Metagame decks that you are the closest to completing (according to paper value), sorted descending. It will list how much value of that deck you currently own, as well as the specific cards and quantities.
+4. A report will be generated listing the top 15 Modern (or the format specified via the -F flag) Metagame decks that you are the closest to completing (according to paper value), sorted descending. It will list how much value of that deck you currently own, as well as the specific cards and quantities.
 
 ```bash
 python mtggoldfish.py -u
 python mtggoldfish.py -b -u
 python mtggoldfish.py -r -u
-python mtggoldfish.py -b -r -u
+python mtggoldfish.py -b -r -u -f
 ```
 Specifying the "-u" flag informs the script to ignore any and all cached deck data for this run, and instead fetch fresh data. This flag can be tacked onto either the default (Owned Cards) analysis, or either of the "-r" or "-b" flags. Specifically, the following actions will be performed:
 1. All decks listed in *desired_decks.txt* will be parsed from MTGGoldfish.com. **This will disregard any cached data and perform a new fetch.**
-2. If the "-b" flag is also set, all Modern Budget decks from https://www.mtggoldfish.com/decks/budget/modern#paper will be parsed. **This will disregard any cached data and perform a new fetch.**
-3. If the "-r" flag is also set, all Modern Metagame decks from https://www.mtggoldfish.com/metagame/modern/full#paper will be parsed. **This will disregard any cached data and perform a new fetch.**
+2. If the "-b" flag is also set, all Modern (or the format specified via the -F flag) Budget decks from https://www.mtggoldfish.com/decks/budget/modern#paper will be parsed. **This will disregard any cached data and perform a new fetch.**
+3. If the "-r" flag is also set, all Modern (or the format specified via the -F flag) Metagame decks from https://www.mtggoldfish.com/metagame/modern/full#paper will be parsed. **This will disregard any cached data and perform a new fetch.**
 4. For each deck listed in *desired_decks.txt*, a report will be generated using the information in *owned_cards.txt*, if any. The report will tell you how many cards you already own in each deck in *desired_decks.txt*, how much paper value that translates to, as well as list the quantities and names of those cards.
 5. If either of the "-r" or "-b" flags were set, their report analysis will also be performed.
+
+```bash
+python mtggoldfish.py -o
+python mtggoldfish.py -b -o
+python mtggoldfish.py -r -o
+python mtggoldfish.py -b -r -u -o -f
+```
+Specifying the "-o" flag informs the script to do all of the same analyses it would otherwise do, except use the online (tix) values instead of paper (dollar) values. If you don't pass this flag, paper values will be used. This flag can be combined with any variation of the other flags. **IMPORTANT:** If you already have cached deck data with the paper values, you will need to use the "-u" during your first run with this flag so the actual tix values will be pulled. This is also inversely true.
+
+```bash
+python mtggoldfish.py -F <FORMAT>
+python mtggoldfish.py -b -F <FORMAT>
+python mtggoldfish.py -r -F <FORMAT>
+python mtggoldfish.py -b -r -F <FORMAT> -u -f -o
+```
+Specifying the "-F" (**uppercase** F) flag informs the script to do all of the same analyses it would otherwise do as specified by your other flags, except it will perform them on the MTG game Format of your choice. **If this flag is not set, Modern will be the format analyzed** Valid game formats are any of the formats available on MTGGoldfish.com, specifically: Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders. This value is *case-insensitive*. This flag can be combined with any variation of the other flags.
 
 # Example Output
 This is an example of a run with the "-b" and "-r" flags set. In this example, all of the deck data had already been cached from a prior run.

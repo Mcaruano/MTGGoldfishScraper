@@ -272,7 +272,7 @@ Given the desired deck URLs, parse all of the decks into Deck objects
 """
 
 
-def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
+def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price):
     deck_objs_list = []
     num_cached_decks = 0
     num_old_cached_decks = 0
@@ -283,12 +283,10 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
     for deck_url in deck_URLs_list:
         deck = Deck()
 
-        # The URL format is either "https://www.mtggoldfish.com/deck/784979$paper" for a Budget deck
+        # The URL format is either "https://www.mtggoldfish.com/deck/784979#paper" for a Budget deck
         # or "https://www.mtggoldfish.com/archetype/modern-grixis-death-s-shadow#paper" for a Modern Meta deck
-        if "deck/" in deck_url:
-            deck_id = deck_url.split('deck/')[1].split("#")[0]
-        else:
-            deck_id = deck_url.split('archetype/')[1].split("#")[0]
+        # So we fetch the Deck ID from the last '/' to the '#'
+        deck_id = deck_url[deck_url.rfind('/') + 1:].split("#")[0]
 
         # Check whether or not a cached version of this deck exists locally, and use that instead
         if not update_cache and is_deck_cached(deck_id):
@@ -329,7 +327,10 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
         # Iterate over all of the rows in the deck list and build the deck object
         deck_list = []
         deck_total_cost = 0.0
-        rows_element = driver.find_element_by_id('tab-paper').find_element_by_class_name(
+        price_tab_element_tag = 'tab-paper'
+        if use_online_price:
+            price_tab_element_tag = 'tab-online'
+        rows_element = driver.find_element_by_id(price_tab_element_tag).find_element_by_class_name(
             'deck-view-decklist').find_element_by_class_name('deck-view-decklist-inner')
         rows_element = rows_element.find_element_by_class_name(
             "deck-view-deck-table").find_element_by_tag_name("tbody").find_elements_by_tag_name("tr")
@@ -355,8 +356,8 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
                     card_price_string = '0'
                 card_quantity = int(card_quantity_string)
                 individual_card_price = float(
-                    card_price_string) / float(card_quantity)
-                deck_total_cost += float(card_price_string)
+                    card_price_string.replace(',', '')) / float(card_quantity)
+                deck_total_cost += float(card_price_string.replace(',', ''))
 
                 # It's possible for a card to appear in the list twice if it is present in both the main deck and the sideboard.
                 # If this happens, we need to just update the Quantity and Price of the existing record
@@ -391,54 +392,37 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list):
 
 
 """
-Uses the Firefox WebDriver to navigate to the Modern Metagame Decks section of MTGGoldfish.com
-and parses all of the URLs for all of the Modern decks into a list.
+Given the URL for a category landing page on MTGGoldfish.com (such as "https://www.mtggoldfish.com/decks/budget/modern#paper"),
+parse all of the URLs for the various decks on that page. It uses the #paper or #online queryparam to determine which URL to load
+for each deck
+
+:param category_landing_page_url: The URL of the category landing page that contains a list of various decks
 """
 
 
-def parse_all_modern_metagame_deck_urls():
-    print("   Opening a browser real quick to snapshot the URLs for all of the Modern Metagame decks on MTGGoldfish.com, as there might be new ones.")
-    modern_metagame_decks_url = "https://www.mtggoldfish.com/metagame/modern/full#paper"
+def parse_deck_urls_from_category_landing_page(category_landing_page_url):
+    print("   Opening a browser real quick to snapshot deck URLs from MTGGoldfish.com, as there might be new decks that we need to fetch data for.")
     driver = webdriver.Firefox()
-    driver.get(modern_metagame_decks_url)
+    driver.get(category_landing_page_url)
 
-    modern_deck_url_list = []
-    deck_tiles = driver.find_elements_by_class_name("archetype-tile")
-    for tile in deck_tiles:
-        deck_info_container = tile.find_element_by_class_name("archetype-tile-description-wrapper").find_element_by_class_name(
-            "archetype-tile-description").find_element_by_class_name("deck-price-paper")
-        deck_url = deck_info_container.find_element_by_tag_name(
-            'a').get_attribute("href")
-
-        # For some reason, the #paper landing page contains URLS for the #online
-        modern_deck_url_list.append(deck_url)
-
-    driver.close()
-    return modern_deck_url_list
-
-
-"""
-Uses the Firefox WebDriver to navigate to the Modern Budget Decks section of MTGGoldfish.com
-and parses all of the URLs for all of the Budget decks into a list.
-"""
-
-
-def parse_all_budget_deck_list_URLs():
-    print("   Opening a browser real quick to snapshot the URLs for all of the Budget decks on MTGGoldfish.com, as there might be new ones.")
-    budget_modern_decks_url = "https://www.mtggoldfish.com/decks/budget/modern#paper"
-    driver = webdriver.Firefox()
-    driver.get(budget_modern_decks_url)
+    deck_URL_container_element_tag = "deck-price-paper"
+    if "#online" in category_landing_page_url.lower():
+        deck_URL_container_element_tag = "deck-price-online"
 
     budget_deck_url_list = []
-    deck_tiles = driver.find_elements_by_class_name("archetype-tile")
-    for tile in deck_tiles:
-        deck_info_container = tile.find_element_by_class_name("archetype-tile-description-wrapper").find_element_by_class_name(
-            "archetype-tile-description").find_element_by_class_name("deck-price-paper")
-        deck_url = deck_info_container.find_element_by_tag_name(
-            'a').get_attribute("href")
+    try:
+        deck_tiles = driver.find_elements_by_class_name("archetype-tile")
+        for tile in deck_tiles:
+            deck_description_container = tile.find_element_by_class_name("archetype-tile-description-wrapper").find_element_by_class_name(
+                "archetype-tile-description").find_element_by_class_name(deck_URL_container_element_tag)
+            deck_url = deck_description_container.find_element_by_tag_name(
+                'a').get_attribute("href")
 
-        # For some reason, the #paper landing page contains URLS for the #online
-        budget_deck_url_list.append(deck_url)
+            # For some reason, the #paper landing page contains URLS for the #online
+            budget_deck_url_list.append(deck_url)
+    except:
+        driver.close()
+        return budget_deck_url_list
 
     driver.close()
     return budget_deck_url_list
@@ -493,57 +477,57 @@ def evaluate_owned_cards(desired_decks_list, owned_cards_list):
 
 
 """
-For each modern metagame deck, we determine how much monetary overlap we currently possess for it,
-and return back a sorted list of the Modern decks, together with which cards and what value we overlap
+For each metagame deck in the desired format, we determine how much monetary overlap we currently possess for it,
+and return back a sorted list of the Meta decks, together with which cards and what value we overlap
 
-:param modern_metagame_decks: A list of Deck objects representing all of the Modern Metagame decks on MTGGoldfish.com
+:param metagame_decks: A list of Deck objects representing all of the Metagame decks on MTGGoldfish.com
 :param owned_cards: A list of dicts containing card info of the format: {CARD_QTY_KEY: card_quantity, CARD_NAME_KEY: card_name}
 """
 
 
-def evaluate_modern_metagame_decks(modern_metagame_decks, owned_cards):
-    modern_metagame_deck_recommendation_report = {}
-    for modern_meta_deck in modern_metagame_decks:
+def evaluate_metagame_decks(metagame_decks, owned_cards):
+    metagame_deck_recommendation_report = {}
+    for meta_deck in metagame_decks:
         specific_cards_owned_in_meta_deck = []
-        number_of_owned_cards_that_are_in_modern_meta_deck = 0
+        number_of_owned_cards_that_are_in_meta_deck = 0
         value_of_meta_deck_owned = 0.0
 
         for owned_card_entry in owned_cards:
             owned_card_name = owned_card_entry[CARD_NAME_KEY]
 
-            # Check for this card's presence in the modern_meta_deck
-            for modern_meta_card_entry in modern_meta_deck.get_deck_list():
-                if modern_meta_card_entry[CARD_NAME_KEY].lower() == owned_card_name.lower():
-                    if owned_card_entry[CARD_QTY_KEY] >= modern_meta_card_entry[CARD_QTY_KEY]:
-                        number_of_owned_cards_that_are_in_modern_meta_deck += modern_meta_card_entry[CARD_QTY_KEY]
+            # Check for this card's presence in the meta_deck
+            for meta_card_entry in meta_deck.get_deck_list():
+                if meta_card_entry[CARD_NAME_KEY].lower() == owned_card_name.lower():
+                    if owned_card_entry[CARD_QTY_KEY] >= meta_card_entry[CARD_QTY_KEY]:
+                        number_of_owned_cards_that_are_in_meta_deck += meta_card_entry[CARD_QTY_KEY]
                         value_of_meta_deck_owned += float(
-                            modern_meta_card_entry[CARD_QTY_KEY]) * modern_meta_card_entry[CARD_PRICE_KEY]
-                        specific_cards_owned_in_meta_deck.append({CARD_NAME_KEY: owned_card_name, CARD_QTY_KEY: modern_meta_card_entry[CARD_QTY_KEY], CARD_PRICE_KEY: float(
-                            modern_meta_card_entry[CARD_QTY_KEY]) * modern_meta_card_entry[CARD_PRICE_KEY]})
+                            meta_card_entry[CARD_QTY_KEY]) * meta_card_entry[CARD_PRICE_KEY]
+                        specific_cards_owned_in_meta_deck.append({CARD_NAME_KEY: owned_card_name, CARD_QTY_KEY: meta_card_entry[CARD_QTY_KEY], CARD_PRICE_KEY: float(
+                            meta_card_entry[CARD_QTY_KEY]) * meta_card_entry[CARD_PRICE_KEY]})
                     else:
-                        number_of_owned_cards_that_are_in_modern_meta_deck += owned_card_entry[CARD_QTY_KEY]
+                        number_of_owned_cards_that_are_in_meta_deck += owned_card_entry[CARD_QTY_KEY]
                         value_of_meta_deck_owned += float(
-                            owned_card_entry[CARD_QTY_KEY]) * modern_meta_card_entry[CARD_PRICE_KEY]
+                            owned_card_entry[CARD_QTY_KEY]) * meta_card_entry[CARD_PRICE_KEY]
                         specific_cards_owned_in_meta_deck.append({CARD_NAME_KEY: owned_card_name, CARD_QTY_KEY: owned_card_entry[CARD_QTY_KEY], CARD_PRICE_KEY: float(
-                            owned_card_entry[CARD_QTY_KEY]) * modern_meta_card_entry[CARD_PRICE_KEY]})
+                            owned_card_entry[CARD_QTY_KEY]) * meta_card_entry[CARD_PRICE_KEY]})
                     break
 
-        # Only save the report if we actually own some cards in this Modern Metagame deck
+        # Only save the report if we actually own some cards in this Metagame deck
         if value_of_meta_deck_owned > 0:
-            modern_metagame_deck_recommendation_report[modern_meta_deck.get_deck_name()] = {
+            metagame_deck_recommendation_report[meta_deck.get_deck_name()] = {
             }
-            modern_metagame_deck_recommendation_report[modern_meta_deck.get_deck_name()] = {OWNED_CARDS_KEY: "%d/%d" % (number_of_owned_cards_that_are_in_modern_meta_deck, modern_meta_deck.get_deck_size(
-            )), SAVED_VALUE_KEY: value_of_meta_deck_owned, CARD_LIST_KEY: specific_cards_owned_in_meta_deck, DECK_PRICE_KEY: modern_meta_deck.get_deck_price()}
+            metagame_deck_recommendation_report[meta_deck.get_deck_name()] = {OWNED_CARDS_KEY: "%d/%d" % (number_of_owned_cards_that_are_in_meta_deck, meta_deck.get_deck_size(
+            )), SAVED_VALUE_KEY: value_of_meta_deck_owned, CARD_LIST_KEY: specific_cards_owned_in_meta_deck, DECK_PRICE_KEY: meta_deck.get_deck_price()}
 
     # Sort entries by value descending
-    modern_metagame_decks_sorted_by_desc_value_saved_as_list = sorted(six.iteritems(
-        modern_metagame_deck_recommendation_report), key=lambda kv: kv[1][SAVED_VALUE_KEY], reverse=True)
+    metagame_decks_sorted_by_desc_value_saved_as_list = sorted(six.iteritems(
+        metagame_deck_recommendation_report), key=lambda kv: kv[1][SAVED_VALUE_KEY], reverse=True)
 
     # Return only the top 15
-    if len(modern_metagame_decks_sorted_by_desc_value_saved_as_list) > 15:
-        return modern_metagame_decks_sorted_by_desc_value_saved_as_list[:15]
+    if len(metagame_decks_sorted_by_desc_value_saved_as_list) > 15:
+        return metagame_decks_sorted_by_desc_value_saved_as_list[:15]
     else:
-        return modern_metagame_decks_sorted_by_desc_value_saved_as_list
+        return metagame_decks_sorted_by_desc_value_saved_as_list
 
 
 """
@@ -636,12 +620,12 @@ def evaluate_budget_decks(owned_cards, desired_decks_list, budget_decks_list):
 
 
 """
-Give a final evaluation report displaying how the cards that you own line up in the Modern Metagame
+Give a final evaluation report displaying how the cards that you own line up with the Metagame
 decks you specified desired_decks.txt
 """
 
 
-def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_list, owned_cards_overlap_report):
+def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_list, owned_cards_overlap_report, use_online_price):
 
     # This is super nasty, but whatever. We print to the file if we're actually given a file to print to. Otherwise we print to the terminal
     if report_output_file_name != "":
@@ -655,8 +639,12 @@ def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_l
                 for desired_deck_obj in desired_decks_list:
                     if desired_deck_obj.get_deck_name().lower() == desired_deck_name_key.lower():
                         desired_deck_total_cost = desired_deck_obj.get_deck_price()
-                        output_file.write("\n   Owned cards that are used in \"%s\" ($%.2f):" % (
-                            desired_deck_name_key, desired_deck_total_cost))
+                        if use_online_price:
+                            output_file.write("\n   Owned cards that are used in \"%s\" (%.2f tix):" %
+                                  (desired_deck_name_key, desired_deck_total_cost))
+                        else:
+                            output_file.write("\n   Owned cards that are used in \"%s\" ($%.2f):" %
+                                  (desired_deck_name_key, desired_deck_total_cost))
 
                 # The owned_cards_overlap_report is of the format:
                 # {'Saved Value': 265.96, 'Card List': [{'Card Name': u'Scalding Tarn', 'Card Quantity': 4}], 'Owned Cards': '4/73'}
@@ -667,14 +655,24 @@ def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_l
                 else:
                     output_file.write("\n      Number of cards owned: %s" % (
                         specific_owned_cards_report[OWNED_CARDS_KEY]))
-                    output_file.write("\n      Value saved: $%.2f" % (
-                        specific_owned_cards_report[SAVED_VALUE_KEY]))
-                    output_file.write("\n      Remaining cost: $%.2f" % (
-                        desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY]))
+                    if use_online_price:
+                        output_file.write("\n      Value saved: %.2f tix" %
+                              (specific_owned_cards_report[SAVED_VALUE_KEY]))
+                        output_file.write("\n      Remaining cost: %.2f tix" % (
+                            desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY]))
+                    else:
+                        output_file.write("\n      Value saved: $%.2f" %
+                              (specific_owned_cards_report[SAVED_VALUE_KEY]))
+                        output_file.write("\n      Remaining cost: $%.2f" % (
+                            desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY]))
                     output_file.write("\n      List of specific cards:")
                     for card_entry in specific_owned_cards_report[CARD_LIST_KEY]:
-                        output_file.write("\n         %sx %s ($%.2f)" % (
-                            card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                        if use_online_price:
+                            output_file.write("\n         %sx %s (%.2f tix)" % (
+                                card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                        else:
+                            output_file.write("\n         %sx %s ($%.2f)" % (
+                                card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
 
     else:
         print("\n=== Owned Card report for Desired Decks listed in desired_decks.txt ===")
@@ -685,8 +683,12 @@ def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_l
             for desired_deck_obj in desired_decks_list:
                 if desired_deck_obj.get_deck_name().lower() == desired_deck_name_key.lower():
                     desired_deck_total_cost = desired_deck_obj.get_deck_price()
-                    print("   Owned cards that are used in \"%s\" ($%.2f):" %
-                          (desired_deck_name_key, desired_deck_total_cost))
+                    if use_online_price:
+                        print("   Owned cards that are used in \"%s\" (%.2f tix):" %
+                              (desired_deck_name_key, desired_deck_total_cost))
+                    else:
+                        print("   Owned cards that are used in \"%s\" ($%.2f):" %
+                              (desired_deck_name_key, desired_deck_total_cost))
 
             # The owned_cards_overlap_report is of the format:
             # {'Saved Value': 265.96, 'Card List': [{'Card Name': u'Scalding Tarn', 'Card Quantity': 4}], 'Owned Cards': '4/73'}
@@ -696,67 +698,109 @@ def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_l
             else:
                 print("      Number of cards owned: %s" %
                       (specific_owned_cards_report[OWNED_CARDS_KEY]))
-                print("      Value saved: $%.2f" %
-                      (specific_owned_cards_report[SAVED_VALUE_KEY]))
-                print("      Remaining cost: $%.2f" % (
-                    desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY]))
+                if use_online_price:
+                    print("      Value saved: %.2f tix" %
+                          (specific_owned_cards_report[SAVED_VALUE_KEY]))
+                    print("      Remaining cost: %.2f tix" % (
+                        desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY]))
+                else:
+                    print("      Value saved: $%.2f" %
+                          (specific_owned_cards_report[SAVED_VALUE_KEY]))
+                    print("      Remaining cost: $%.2f" % (
+                        desired_deck_total_cost - specific_owned_cards_report[SAVED_VALUE_KEY]))
                 print("      List of specific cards:")
                 for card_entry in specific_owned_cards_report[CARD_LIST_KEY]:
-                    print("         %sx %s ($%.2f)" % (
-                        card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                    if use_online_price:
+                        print("         %sx %s (%.2f tix)" % (
+                            card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                    else:
+                        print("         %sx %s ($%.2f)" % (
+                            card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
 
 
 """
-Print a final report of the Modern Metagame decks that you have share the most value with
+Print a final report of the Metagame decks that you have share the most value with
 
-:param modern_metagame_deck_recommendation_report: A list of tuples containing (<deck_name>, <report_summary_for_this_deck>) pairs,
+:param metagame_deck_recommendation_report: A list of tuples containing (<deck_name>, <report_summary_for_this_deck>) pairs,
                                                    sorted descending based on the 'Saved Value' key in the <Report_summary_for_this_deck>
 """
 
 
-def print_modern_metagame_deck_recommendation_report(report_output_file_name, modern_metagame_deck_recommendation_report):
+def print_metagame_deck_recommendation_report(report_output_file_name, metagame_deck_recommendation_report, use_online_price):
 
     # This is super nasty, but whatever. We print to the file if we're actually given a file to print to. Otherwise we print to the terminal
     if report_output_file_name != "":
         with open(report_output_file_name, 'a') as output_file:
             output_file.write(
-                "\n\n=== Modern Metagame deck recommendation report based on Cards listed in owned_cards.txt ===")
+                "\n\n=== Metagame deck recommendation report based on Cards listed in owned_cards.txt ===")
 
             # The sort method turns the dictionary into a list of a tuple like this: [('Affinity', {'Saved Value': 62.87, 'Owned Cards': '3/72', 'Deck Price': 1032.95, 'Specific Cards': [{}]}), ...]
-            for deck_summary_entry in modern_metagame_deck_recommendation_report:
+            for deck_summary_entry in metagame_deck_recommendation_report:
                 output_file.write("\n\n   #%s Closest Match:" % (
-                    modern_metagame_deck_recommendation_report.index(deck_summary_entry) + 1))
-                output_file.write("\n      Modern Meta Deck: \"%s\" ($%.2f)" % (
-                    deck_summary_entry[0], deck_summary_entry[1][DECK_PRICE_KEY]))
-                output_file.write("\n      Number of cards owned: %s" % (
-                    deck_summary_entry[1][OWNED_CARDS_KEY]))
-                output_file.write("\n      Value of cards owned: $%.2f" % (
-                    deck_summary_entry[1][SAVED_VALUE_KEY]))
-                output_file.write("\n      Remaining cost: $%.2f" % (
-                    deck_summary_entry[1][DECK_PRICE_KEY] - deck_summary_entry[1][SAVED_VALUE_KEY]))
+                    metagame_deck_recommendation_report.index(deck_summary_entry) + 1))
+                if use_online_price:
+                    output_file.write("\n      Meta Deck: \"%s\" (%.2f tix)" %
+                          (deck_summary_entry[0], deck_summary_entry[1][DECK_PRICE_KEY]))
+                else:
+                    output_file.write("\n      Meta Deck: \"%s\" ($%.2f)" %
+                          (deck_summary_entry[0], deck_summary_entry[1][DECK_PRICE_KEY]))
+                output_file.write("\n      Number of cards owned: %s" %
+                      (deck_summary_entry[1][OWNED_CARDS_KEY]))
+                if use_online_price:
+                    output_file.write("\n      Value of cards owned: %.2f tix" %
+                          (deck_summary_entry[1][SAVED_VALUE_KEY]))
+                else:
+                    output_file.write("\n      Value of cards owned: $%.2f" %
+                          (deck_summary_entry[1][SAVED_VALUE_KEY]))
+                if use_online_price:
+                    output_file.write("\n      Remaining cost: %.2f tix" % (
+                        deck_summary_entry[1][DECK_PRICE_KEY] - deck_summary_entry[1][SAVED_VALUE_KEY]))
+                else:
+                    output_file.write("\n      Remaining cost: $%.2f" % (
+                        deck_summary_entry[1][DECK_PRICE_KEY] - deck_summary_entry[1][SAVED_VALUE_KEY]))
                 output_file.write("\n      List of specific cards:")
                 for card_entry in deck_summary_entry[1][CARD_LIST_KEY]:
-                    output_file.write("\n         %sx %s ($%.2f)" % (
-                        card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                    if use_online_price:
+                        output_file.write("\n         %sx %s (%.2f tix)" % (
+                            card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                    else:
+                        output_file.write("\n         %sx %s ($%.2f)" % (
+                            card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
     else:
-        print("\n=== Modern Metagame deck recommendation report based on Cards listed in owned_cards.txt ===")
+        print("\n=== Metagame deck recommendation report based on Cards listed in owned_cards.txt ===")
 
         # The sort method turns the dictionary into a list of a tuple like this: [('Affinity', {'Saved Value': 62.87, 'Owned Cards': '3/72', 'Deck Price': 1032.95, 'Specific Cards': [{}]}), ...]
-        for deck_summary_entry in modern_metagame_deck_recommendation_report:
+        for deck_summary_entry in metagame_deck_recommendation_report:
             print("\n   #%s Closest Match:" % (
-                modern_metagame_deck_recommendation_report.index(deck_summary_entry) + 1))
-            print("      Modern Meta Deck: \"%s\" ($%.2f)" %
-                  (deck_summary_entry[0], deck_summary_entry[1][DECK_PRICE_KEY]))
+                metagame_deck_recommendation_report.index(deck_summary_entry) + 1))
+            if use_online_price:
+                print("      Meta Deck: \"%s\" (%.2f tix)" %
+                      (deck_summary_entry[0], deck_summary_entry[1][DECK_PRICE_KEY]))
+            else:
+                print("      Meta Deck: \"%s\" ($%.2f)" %
+                      (deck_summary_entry[0], deck_summary_entry[1][DECK_PRICE_KEY]))
             print("      Number of cards owned: %s" %
                   (deck_summary_entry[1][OWNED_CARDS_KEY]))
-            print("      Value of cards owned: $%.2f" %
-                  (deck_summary_entry[1][SAVED_VALUE_KEY]))
-            print("      Remaining cost: $%.2f" % (
-                deck_summary_entry[1][DECK_PRICE_KEY] - deck_summary_entry[1][SAVED_VALUE_KEY]))
+            if use_online_price:
+                print("      Value of cards owned: %.2f tix" %
+                      (deck_summary_entry[1][SAVED_VALUE_KEY]))
+            else:
+                print("      Value of cards owned: $%.2f" %
+                      (deck_summary_entry[1][SAVED_VALUE_KEY]))
+            if use_online_price:
+                print("      Remaining cost: %.2f tix" % (
+                    deck_summary_entry[1][DECK_PRICE_KEY] - deck_summary_entry[1][SAVED_VALUE_KEY]))
+            else:
+                print("      Remaining cost: $%.2f" % (
+                    deck_summary_entry[1][DECK_PRICE_KEY] - deck_summary_entry[1][SAVED_VALUE_KEY]))
             print("      List of specific cards:")
             for card_entry in deck_summary_entry[1][CARD_LIST_KEY]:
-                print("         %sx %s ($%.2f)" % (
-                    card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                if use_online_price:
+                    print("         %sx %s (%.2f tix)" % (
+                        card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                else:
+                    print("         %sx %s ($%.2f)" % (
+                        card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
 
 
 """
@@ -765,7 +809,7 @@ over each entry and printing it out to the terminal in a clear way
 """
 
 
-def print_budget_evaluation_report(report_output_file_name, desired_decks_list, budget_deck_report):
+def print_budget_evaluation_report(report_output_file_name, desired_decks_list, budget_deck_report, use_online_price):
 
     # This is super nasty, but whatever. We print to the file if we're actually given a file to print to. Otherwise we print to the terminal
     if report_output_file_name != "":
@@ -777,8 +821,12 @@ def print_budget_evaluation_report(report_output_file_name, desired_decks_list, 
                 # This is a super clumsy way to fetch the price of the original deck
                 for desired_deck_obj in desired_decks_list:
                     if desired_deck_obj.get_deck_name().lower() == desired_deck_name_key.lower():
-                        output_file.write("\n   Budget Decks that compare to Desired Deck: \"%s\" ($%.2f):" % (
-                            desired_deck_name_key, desired_deck_obj.get_deck_price()))
+                        if use_online_price:
+                            output_file.write("\n   Budget Decks that compare to Desired Deck: \"%s\" (%.2f tix):" % (
+                                desired_deck_name_key, desired_deck_obj.get_deck_price()))
+                        else:
+                            output_file.write("\n   Budget Decks that compare to Desired Deck: \"%s\" ($%.2f):" % (
+                                desired_deck_name_key, desired_deck_obj.get_deck_price()))
 
                 # The sort method turns the dictionary into a list of a tuple like this: [('Rogues', {'Shared Value': 2.87, 'Shared Cards': '1/72', 'Deck Price': 32.95}), ...]
                 for budget_deck_list_record in budget_deck_report[desired_deck_name_key]:
@@ -786,25 +834,45 @@ def print_budget_evaluation_report(report_output_file_name, desired_decks_list, 
                         budget_deck_report[desired_deck_name_key].index(budget_deck_list_record) + 1))
                     output_file.write("\n         Budget Deck Name: %s" % (
                         budget_deck_list_record[0]))
-                    output_file.write("\n         Budget Deck cost: $%s" % (
-                        budget_deck_list_record[1][DECK_PRICE_KEY]))
+                    if use_online_price:
+                        output_file.write("\n         Budget Deck cost: %s tix" % (
+                            budget_deck_list_record[1][DECK_PRICE_KEY]))
+                    else:
+                        output_file.write("\n         Budget Deck cost: $%s" % (
+                            budget_deck_list_record[1][DECK_PRICE_KEY]))
                     output_file.write("\n         Number of cards shared: %s" % (
                         budget_deck_list_record[1][SHARED_CARDS_KEY]))
-                    output_file.write("\n         Value shared: $%.2f" % (
-                        budget_deck_list_record[1][SHARED_VALUE_KEY]))
+                    if use_online_price:
+                        output_file.write("\n         Value shared: %.2f tix" % (
+                            budget_deck_list_record[1][SHARED_VALUE_KEY]))
+                    else:
+                        output_file.write("\n         Value shared: $%.2f" % (
+                            budget_deck_list_record[1][SHARED_VALUE_KEY]))
                     output_file.write("\n         Owned Cards Report:")
                     if budget_deck_list_record[1][SAVED_VALUE_KEY] != 0:
                         output_file.write("\n            Number of cards owned: %s" % (
                             budget_deck_list_record[1][OWNED_CARDS_KEY]))
-                        output_file.write("\n            Value of cards owned: $%.2f" % (
-                            budget_deck_list_record[1][SAVED_VALUE_KEY]))
-                        output_file.write("\n            Remaining cost: $%.2f" % (
-                            budget_deck_list_record[1][DECK_PRICE_KEY] - budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                        if use_online_price:
+                            output_file.write("\n            Value of cards owned: %.2f tix" % (
+                                budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                        else:
+                            output_file.write("\n            Value of cards owned: $%.2f" % (
+                                budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                        if use_online_price:
+                            output_file.write("\n            Remaining cost: %.2f tix" % (
+                                budget_deck_list_record[1][DECK_PRICE_KEY] - budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                        else:
+                            output_file.write("\n            Remaining cost: $%.2f" % (
+                                budget_deck_list_record[1][DECK_PRICE_KEY] - budget_deck_list_record[1][SAVED_VALUE_KEY]))
                         output_file.write(
                             "\n            List of specific cards:")
                         for card_entry in budget_deck_list_record[1][CARD_LIST_KEY]:
-                            output_file.write("\n               %sx %s ($%.2f)" % (
-                                card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                            if use_online_price:
+                                output_file.write("\n               %sx %s (%.2f tix)" % (
+                                    card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                            else:
+                                output_file.write("\n               %sx %s ($%.2f)" % (
+                                    card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
                     else:
                         output_file.write(
                             "\n               None of the cards listed in owned_cards.txt are used in this deck :(")
@@ -825,27 +893,84 @@ def print_budget_evaluation_report(report_output_file_name, desired_decks_list, 
                     budget_deck_report[desired_deck_name_key].index(budget_deck_list_record) + 1))
                 print("         Budget Deck Name: %s" %
                       (budget_deck_list_record[0]))
-                print("         Budget Deck cost: $%s" %
-                      (budget_deck_list_record[1][DECK_PRICE_KEY]))
-                print("         Number of cards shared: %s" %
-                      (budget_deck_list_record[1][SHARED_CARDS_KEY]))
-                print("         Value shared: $%.2f" %
-                      (budget_deck_list_record[1][SHARED_VALUE_KEY]))
+                if use_online_price:
+                    print("         Budget Deck cost: %s tix" % (
+                        budget_deck_list_record[1][DECK_PRICE_KEY]))
+                else:
+                    print("         Budget Deck cost: $%s" % (
+                        budget_deck_list_record[1][DECK_PRICE_KEY]))
+                print("         Number of cards shared: %s" % (
+                    budget_deck_list_record[1][SHARED_CARDS_KEY]))
+                if use_online_price:
+                    print("         Value shared: %.2f tix" % (
+                        budget_deck_list_record[1][SHARED_VALUE_KEY]))
+                else:
+                    print("         Value shared: $%.2f" % (
+                        budget_deck_list_record[1][SHARED_VALUE_KEY]))
                 print("         Owned Cards Report:")
                 if budget_deck_list_record[1][SAVED_VALUE_KEY] != 0:
-                    print("            Number of cards owned: %s" %
-                          (budget_deck_list_record[1][OWNED_CARDS_KEY]))
-                    print("            Value of cards owned: $%.2f" %
-                          (budget_deck_list_record[1][SAVED_VALUE_KEY]))
-                    print("            Remaining cost: $%.2f" % (
-                        budget_deck_list_record[1][DECK_PRICE_KEY] - budget_deck_list_record[1][SAVED_VALUE_KEY]))
-                    print("            List of specific cards:")
+                    print("            Number of cards owned: %s" % (
+                        budget_deck_list_record[1][OWNED_CARDS_KEY]))
+                    if use_online_price:
+                        print("            Value of cards owned: %.2f tix" % (
+                            budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                    else:
+                        print("            Value of cards owned: $%.2f" % (
+                            budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                    if use_online_price:
+                        print("            Remaining cost: %.2f tix" % (
+                            budget_deck_list_record[1][DECK_PRICE_KEY] - budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                    else:
+                        print("            Remaining cost: $%.2f" % (
+                            budget_deck_list_record[1][DECK_PRICE_KEY] - budget_deck_list_record[1][SAVED_VALUE_KEY]))
+                    print(
+                        "            List of specific cards:")
                     for card_entry in budget_deck_list_record[1][CARD_LIST_KEY]:
-                        print("               %sx %s ($%.2f)" % (
-                            card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                        if use_online_price:
+                            print("               %sx %s (%.2f tix)" % (
+                                card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
+                        else:
+                            print("               %sx %s ($%.2f)" % (
+                                card_entry[CARD_QTY_KEY], card_entry[CARD_NAME_KEY], card_entry[CARD_PRICE_KEY]))
                 else:
                     print(
                         "               None of the cards listed in owned_cards.txt are used in this deck :(")
+
+
+"""
+Given the desired Format (Modern, Standard, Vintage, etc) and whether or not the user desired online vs paper pricing,
+return a tuple containing the URLs where the corresponding Metagame and Budget decks can be found
+
+:param desired_format: The desired Format to analyze
+:param use_online_price: True if the user wants pricing analysis to be performed in online (tix) pricing
+"""
+
+
+def determine_meta_and_budget_URLs(desired_format, use_online_price):
+    pricing_query_param = "#paper"
+    if use_online_price:
+        pricing_query_param = "#online"
+
+    if desired_format == "standard":
+        return ("https://www.mtggoldfish.com/metagame/standard/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/standard" + pricing_query_param)
+    elif desired_format == "modern":
+        return ("https://www.mtggoldfish.com/metagame/modern/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/modern" + pricing_query_param)
+    elif desired_format == "pauper":
+        return ("https://www.mtggoldfish.com/metagame/pauper/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/pauper" + pricing_query_param)
+    elif desired_format == "legacy":
+        return ("https://www.mtggoldfish.com/metagame/legacy/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/legacy" + pricing_query_param)
+    elif desired_format == "vintage":
+        return ("https://www.mtggoldfish.com/metagame/vintage/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/vintage" + pricing_query_param)
+    elif desired_format == "frontier":
+        return ("https://www.mtggoldfish.com/metagame/frontier/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/frontier" + pricing_query_param)
+    elif desired_format == "commander 1v1":
+        return ("https://www.mtggoldfish.com/metagame/commander_1v1/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/commander_1v1" + pricing_query_param)
+    elif desired_format == "commander":
+        return ("https://www.mtggoldfish.com/metagame/commander/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/commander" + pricing_query_param)
+    elif desired_format == "tiny leaders":
+        return ("https://www.mtggoldfish.com/metagame/tiny_leaders/full" + pricing_query_param, "https://www.mtggoldfish.com/decks/budget/tiny_leaders" + pricing_query_param)
+    else:
+        return (None, None)
 
 
 if __name__ == "__main__":
@@ -857,23 +982,57 @@ if __name__ == "__main__":
     # Since parsing Budget decks takes FOREVER, we only do it if the user specifies the -b flag
     parser = OptionParser(description=("This script parses decks you'd like to build into from MTGGoldfish.com listed in desired_decks.txt"
                                        " as well as any cards listed in owned_cards.txt to tell you how far along you already are to constructing"
-                                       " those decks with the cards you already own. Additionally, this script can parse all of Modern budget decks"
+                                       " those decks with the cards you already own. Additionally, this script can parse all of Budget decks (of the format you specify with the -F flag) "
                                        " listed on MTGGoldfish.com by specifying the \"-b\" flag, which will generate a report telling you the top 5"
                                        " Budget decks that overlap the most with each of your desired decks, sorted descending by monetary overlap, NOT sheer card quantity"))
-    parser.add_option("-b", "--budget", dest="parse_budget", help="Parse all Modern Budget decks from MTGGoldfish that aren't currently cached and then run an analysis as described in the README. This can take 10 minutes or more for the first run. Decks parsed this way get cached for future analysis, so that browser fetches aren't required, unless explicitly commanded to via the \"-u\" flag", action='store_const', const=True)
-    parser.add_option("-r", "--recommend", dest="recommend_meta_decks", help="Parse all Modern Metagame decks from MTGGoldfish that aren't currently cached and then run an analysis as described in the README. This can take 10 minutes or more for the first run. Decks parsed this way get cached for future analysis, so that browser fetches aren't required, unless explicitly commanded to via the \"-u\" flag", action='store_const', const=True)
-    parser.add_option("-u", "--update", dest="update_cache", help="Fetches fresh data for all decks specified in desired_decks.txt as well as all Modern Budget decks listed on MTGGoldfish.com. Analysis will also be provided at the end of the run. This can take 10 minutes or more", action='store_const', const=True)
-    parser.add_option("-f", "--file", dest="print_to_file",
-                      help="Informs the script to print all reports to a .txt file. The file name will be of the format: deck_report_MM_DD_YYYY.txt", action='store_const', const=True)
+    parser.add_option("-b", "--budget",
+        dest="parse_budget",
+        help="Parse all Budget decks (of the format you specify with the -F flag) from MTGGoldfish that aren't currently cached and then run an analysis as described in the README. This can take 10 minutes or more for the first run. Decks parsed this way get cached for future analysis, so that browser fetches aren't required, unless explicitly commanded to via the \"-u\" flag",
+        action='store_const',
+        const=True)
+    parser.add_option("-r", "--recommend",
+        dest="recommend_meta_decks",
+        help="Parse all Metagame decks (of the format you specify with the -F flag) from MTGGoldfish that aren't currently cached and then run an analysis as described in the README. This can take 10 minutes or more for the first run. Decks parsed this way get cached for future analysis, so that browser fetches aren't required, unless explicitly commanded to via the \"-u\" flag",
+        action='store_const',
+        const=True)
+    parser.add_option("-o", "--online",
+        dest="use_online_price",
+        help="Perform all analyses using the online (tix) price of cards, instead of paper value",
+        action='store_const',
+        const=True)
+    parser.add_option("-F", "--format",
+        dest="desired_format",
+        default="Modern",
+        help="Specify the format you want to run the analysis for. Valid formats are (case insensitive): Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders [default: %default]",)
+    parser.add_option("-u", "--update",
+        dest="update_cache",
+        help="Fetches fresh data for all decks during this run. Analysis will also be provided at the end of the run. This can take 10 minutes or more",
+        action='store_const',
+        const=True)
+    parser.add_option("-f", "--file",
+        dest="print_to_file",
+        help="Informs the script to print all reports to a .txt file. The file name will be of the format: deck_report_MM_DD_YYYY.txt",
+        action='store_const',
+        const=True)
     (options, args) = parser.parse_args()
 
     owned_cards = parse_owned_cards()
     desired_deck_URLs = parse_desired_deck_URLs()
 
+    # Sanitize Format input
+    if options.desired_format.lower() not in ["standard", "modern", "pauper", "legacy", "vintage", "frontier", "commander 1v1", "commander", "tiny leaders"]:
+        print(
+            "\n[ERROR] Format \"%s\" is not a valid format. Exiting" %
+            options.desired_format)
+        sys.exit(0)
+
+    (url_for_meta_decks, url_for_budget_decks) = determine_meta_and_budget_URLs(
+        options.desired_format, options.use_online_price)
+
     start_time = time.time()
     print("\nFetching Deck information for decks listed in desired_decks.txt.")
     desired_decks = parse_decks_from_list_of_urls(
-        options.update_cache, desired_deck_URLs)
+        options.update_cache, desired_deck_URLs, options.use_online_price)
 
     # If the User hasn't specified any cards in owned_cards.txt, then the only other reason to run this script at all is
     # to generate a report on the Budget Decks from MTGGoldfish.com. So that's what we will do.
@@ -886,8 +1045,8 @@ if __name__ == "__main__":
             "\n[ERROR] Budget Analysis implied but there are no decks listed in desired_decks.txt. Exiting")
         sys.exit(0)
 
-    # Perform Modern Metagame Recommendation Analysis if desired
-    modern_metagame_decks = []
+    # Perform Metagame Recommendation Analysis if desired
+    metagame_decks = []
     if options.recommend_meta_decks:
 
         # We can't recommend meta decks if the User supplied no cards
@@ -895,23 +1054,27 @@ if __name__ == "__main__":
             print(
                 "\n[ERROR]: Recommend flag set, but no cards provided in owned_cards.txt. Skipping")
         else:
-            print("\nRecommend flag set. Fetching Deck information of all Modern Metagame decks for Recommendation analysis...")
-            modern_metagame_urls_list = parse_all_modern_metagame_deck_urls()
-            modern_metagame_decks = parse_decks_from_list_of_urls(
-                options.update_cache, modern_metagame_urls_list)
+            print("\nRecommend flag set. Fetching Deck information of all %s Metagame decks for Recommendation analysis..." %
+                options.desired_format)
+            metagame_urls_list = parse_deck_urls_from_category_landing_page(
+                url_for_meta_decks)
+            metagame_decks = parse_decks_from_list_of_urls(
+                options.update_cache, metagame_urls_list, options.use_online_price)
 
     # Perform Budget Analysis if desired
     budget_decks = []
-    if should_run_budget_analysis:
+    if should_run_budget_analysis and len(url_for_budget_decks) > 0:
         status_msg = ""
         if options.parse_budget is True:
             status_msg = "\nBudget flag set. "
         else:
             status_msg = "\nowned_cards.txt was empty. "
-        print(status_msg + "Fetching Deck information of all Modern Budget decks for budget analysis...")
-        budget_decks_url_list = parse_all_budget_deck_list_URLs()
+        print(status_msg + "Fetching Deck information of all %s Budget decks for budget analysis..." %
+            options.desired_format)
+        budget_decks_url_list = parse_deck_urls_from_category_landing_page(
+            url_for_budget_decks)
         budget_decks = parse_decks_from_list_of_urls(
-            options.update_cache, budget_decks_url_list)
+            options.update_cache, budget_decks_url_list, options.use_online_price)
 
     print("\nDone fetching all Deck information. Fetch took %.2f seconds" %
           (time.time() - start_time))
@@ -923,11 +1086,16 @@ if __name__ == "__main__":
 
     # We can't recommend meta decks if the User supplied no cards
     if options.recommend_meta_decks and not no_owned_cards_in_list:
-        print("\nComputing Modern Metagame Deck Recommendation evaluations...")
-        modern_metagame_deck_recommendation_report = evaluate_modern_metagame_decks(
-            modern_metagame_decks, owned_cards)
+        print("\nComputing %s Metagame Deck Recommendation evaluations..." %
+            options.desired_format)
+        metagame_deck_recommendation_report = evaluate_metagame_decks(
+            metagame_decks, owned_cards)
 
-    if should_run_budget_analysis:
+    if should_run_budget_analysis and len(budget_decks) == 0:
+        print("\n[ERROR]: There aren't any Budget decks for %s to run an analysis on. Skipping Budget analysis." %
+                options.desired_format)
+
+    if should_run_budget_analysis and len(budget_decks) > 0:
         print("\nComputing Budget Deck List evaluations...")
         budget_deck_report = evaluate_budget_decks(
             owned_cards, desired_decks, budget_decks)
@@ -960,19 +1128,23 @@ if __name__ == "__main__":
         print("================ Report(s) =================")
         print("============================================")
 
+    analysis_has_been_performed = False
     if not no_owned_cards_in_list and len(desired_decks) == 0:
+        analysis_has_been_performed = True
         print_owned_cards_evaluation_report(
-            report_output_file_name, desired_decks, owned_cards_overlap_report)
+            report_output_file_name, desired_decks, owned_cards_overlap_report, options.use_online_price)
 
     if options.recommend_meta_decks and not no_owned_cards_in_list:
-        print_modern_metagame_deck_recommendation_report(
-            report_output_file_name, modern_metagame_deck_recommendation_report)
+        analysis_has_been_performed = True
+        print_metagame_deck_recommendation_report(
+            report_output_file_name, metagame_deck_recommendation_report, options.use_online_price)
 
-    if should_run_budget_analysis:
+    if should_run_budget_analysis and len(budget_decks) > 0:
+        analysis_has_been_performed = True
         print_budget_evaluation_report(
-            report_output_file_name, desired_decks, budget_deck_report)
+            report_output_file_name, desired_decks, budget_deck_report, options.use_online_price)
 
-    if options.print_to_file:
+    if options.print_to_file and analysis_has_been_performed:
         todays_date = datetime.now()
         month = todays_date.month
         day = todays_date.day
@@ -982,5 +1154,8 @@ if __name__ == "__main__":
             day = "0%s" % (todays_date.day)
         print("Report has been printed to file: \"deck_report_%s_%s_%s.txt\"" %
               (month, day, todays_date.year))
+
+    if not analysis_has_been_performed:
+        print("No analysis was performed during this run due to the data that was fetched/provided being insufficient. Try again with different data.")
 
     sys.exit(0)
