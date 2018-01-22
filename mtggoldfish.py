@@ -640,10 +640,10 @@ def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_l
                     if desired_deck_obj.get_deck_name().lower() == desired_deck_name_key.lower():
                         desired_deck_total_cost = desired_deck_obj.get_deck_price()
                         if use_online_price:
-                            output_file.write("\n   Owned cards that are used in \"%s\" (%.2f tix):" %
+                            output_file.write("\n\n   Owned cards that are used in \"%s\" (%.2f tix):" %
                                   (desired_deck_name_key, desired_deck_total_cost))
                         else:
-                            output_file.write("\n   Owned cards that are used in \"%s\" ($%.2f):" %
+                            output_file.write("\n\n   Owned cards that are used in \"%s\" ($%.2f):" %
                                   (desired_deck_name_key, desired_deck_total_cost))
 
                 # The owned_cards_overlap_report is of the format:
@@ -684,10 +684,10 @@ def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_l
                 if desired_deck_obj.get_deck_name().lower() == desired_deck_name_key.lower():
                     desired_deck_total_cost = desired_deck_obj.get_deck_price()
                     if use_online_price:
-                        print("   Owned cards that are used in \"%s\" (%.2f tix):" %
+                        print("\n   Owned cards that are used in \"%s\" (%.2f tix):" %
                               (desired_deck_name_key, desired_deck_total_cost))
                     else:
-                        print("   Owned cards that are used in \"%s\" ($%.2f):" %
+                        print("\n   Owned cards that are used in \"%s\" ($%.2f):" %
                               (desired_deck_name_key, desired_deck_total_cost))
 
             # The owned_cards_overlap_report is of the format:
@@ -1002,7 +1002,7 @@ if __name__ == "__main__":
         const=True)
     parser.add_option("-F", "--format",
         dest="desired_format",
-        default="Modern",
+        default="modern",
         help="Specify the format you want to run the analysis for. Valid formats are (case insensitive): Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders [default: %default]",)
     parser.add_option("-u", "--update",
         dest="update_cache",
@@ -1038,6 +1038,7 @@ if __name__ == "__main__":
     # to generate a report on the Budget Decks from MTGGoldfish.com. So that's what we will do.
     no_owned_cards_in_list = len(
         owned_cards) == 1 and owned_cards[0][CARD_NAME_KEY] == "name of card that doesn't exist"
+    should_run_budget_analysis = False
     if options.parse_budget or no_owned_cards_in_list:
         should_run_budget_analysis = True
     if should_run_budget_analysis and len(desired_decks) == 0:
@@ -1079,7 +1080,7 @@ if __name__ == "__main__":
     print("\nDone fetching all Deck information. Fetch took %.2f seconds" %
           (time.time() - start_time))
 
-    if not no_owned_cards_in_list and len(desired_decks) == 0:
+    if not no_owned_cards_in_list and len(desired_decks) != 0:
         print("\nComputing Owned Cards evaluations...")
         owned_cards_overlap_report = evaluate_owned_cards(
             desired_decks, owned_cards)
@@ -1129,7 +1130,7 @@ if __name__ == "__main__":
         print("============================================")
 
     analysis_has_been_performed = False
-    if not no_owned_cards_in_list and len(desired_decks) == 0:
+    if not no_owned_cards_in_list and len(desired_decks) != 0:
         analysis_has_been_performed = True
         print_owned_cards_evaluation_report(
             report_output_file_name, desired_decks, owned_cards_overlap_report, options.use_online_price)
