@@ -8,9 +8,13 @@ Download all of the files to the *same* directory. Namely, **mtggoldfish.py**, *
 ```bash
 pip install Selenium
 ```
-2. Go to https://github.com/mozilla/geckodriver/releases and download the Firefox geckodriver for your OS. This is a sub-dependency of Selenium, as this script uses the Firefox WebDriver
-3. Add "geckodriver" to your PATH
-4. Install FireFox on your computer if you haven't already.
+2. Install the "progress" Python library (for nice-looking progress bars)
+```bash
+pip install progress
+```
+3. Go to https://github.com/mozilla/geckodriver/releases and download the Firefox geckodriver for your OS. This is a sub-dependency of Selenium, as this script uses the Firefox WebDriver
+4. Add "geckodriver" to your PATH
+5. Install FireFox on your computer if you haven't already.
 	* **Note** that minor issues can arise due to nuanced differences in FireFox versions and the Selenium API. While I cannot possibly document all of those here, just know that your most likely solution will be to install an older version of FireFox
 
 ## Windows

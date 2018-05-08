@@ -10,6 +10,7 @@ from datetime import datetime
 import errno
 from optparse import OptionParser
 import os
+from progress.bar import IncrementalBar
 import re
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -44,8 +45,6 @@ SHARED_VALUE_KEY = 'Shared Value'
 """
 Deck class to contain all of the information pertaining to a single deck
 """
-
-
 class Deck(object):
     def __init__(self):
         self.deck_name = ""
@@ -94,8 +93,6 @@ parsed from the Deck URL.
 
 :param deck_id: The DeckID of this deck on MTGGoldfish
 """
-
-
 def is_deck_cached(deck_id):
     cache_dir = os.path.join(os.path.dirname(__file__), 'deck_cache')
     if not os.path.isdir(cache_dir):
@@ -118,8 +115,6 @@ and returns true if the date is >= 30 days old
 
 :param deck_id: The DeckID of this deck on MTGGoldfish
 """
-
-
 def cached_deck_is_old(deck_id):
     cache_dir = os.path.join(os.path.dirname(__file__), 'deck_cache')
     if not os.path.isdir(cache_dir):
@@ -146,8 +141,6 @@ Given a Deck object, utilize the cPickle library to save it to a local file
 :param deck: The Deck object to store to the file
 :param deck_id: The DeckID for the deck from MTGGoldfish.com
 """
-
-
 def save_deck_to_cache(deck, deck_id):
 
     # If the deck_cache subdirectory hasn't been created yet, create it
@@ -181,8 +174,6 @@ def save_deck_to_cache(deck, deck_id):
 """
 Given a DeckID, load the deck from the cache
 """
-
-
 def load_deck_from_cache(deck_id):
     deck = Deck()
 
@@ -207,8 +198,6 @@ def load_deck_from_cache(deck_id):
 Parse the owned_cards.txt file and return the cards as a list of dictionaries of card records
 using CARD_QTY_KEY and CARD_NAME_KEY
 """
-
-
 def parse_owned_cards():
     owned_cards = []
     script_dir = os.path.dirname(__file__)
@@ -245,8 +234,6 @@ def parse_owned_cards():
 """
 Parse the desired_decks.txt file and return a list of the URLs contained within
 """
-
-
 def parse_desired_deck_URLs():
     desired_deck_URLs = []
     script_dir = os.path.dirname(__file__)
@@ -270,9 +257,8 @@ Given the desired deck URLs, parse all of the decks into Deck objects
 :param update_cache: If set to True, we will ignore any cached versions of these decks
 :param deck_URLs_list: The list of deck URLs
 """
-
-
 def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price):
+    progress_bar = IncrementalBar("   Fetching Deck Data", max=len(deck_URLs_list), suffix='%(percent)d%%')
     deck_objs_list = []
     num_cached_decks = 0
     num_old_cached_decks = 0
@@ -296,6 +282,8 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price
 
             # Load the deck from the cache
             deck_objs_list.append(load_deck_from_cache(deck_id))
+
+            progress_bar.next()
             continue
 
         driver = webdriver.Firefox()
@@ -379,6 +367,10 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price
 
         driver.close()
 
+        progress_bar.next()
+
+    progress_bar.finish()
+
     # Print number of cached decks used
     print("   Finished fetching deck data. %s of %s decks were fetched from the cache." % (
         num_cached_decks, len(deck_URLs_list)))
@@ -398,8 +390,6 @@ for each deck
 
 :param category_landing_page_url: The URL of the category landing page that contains a list of various decks
 """
-
-
 def parse_deck_urls_from_category_landing_page(category_landing_page_url):
     print("   Opening a browser real quick to snapshot deck URLs from MTGGoldfish.com, as there might be new decks that we need to fetch data for.")
     driver = webdriver.Firefox()
@@ -437,10 +427,10 @@ The final report is of the format:
 :param desired_decks_list: A list of Deck objects representing the decks in desired_decks.txt
 :param owned_cards_list: The list of Owned Cards as parsed from owned_cards.txt
 """
-
-
 def evaluate_owned_cards(desired_decks_list, owned_cards_list):
+    progress_bar = IncrementalBar("   Evaluating", max=len(desired_decks_list) * len(owned_cards_list), suffix='%(percent)d%%')
     owned_overlap_report = {}
+
     for desired_deck in desired_decks_list:
         owned_cards_that_overlap = []
 
@@ -450,6 +440,7 @@ def evaluate_owned_cards(desired_decks_list, owned_cards_list):
             desired_card_name = desired_card_entry[CARD_NAME_KEY]
 
             for owned_card_entry in owned_cards_list:
+                progress_bar.next()
                 if owned_card_entry[CARD_NAME_KEY].lower() == desired_card_name.lower():
                     if desired_card_entry[CARD_QTY_KEY] >= owned_card_entry[CARD_QTY_KEY]:
                         number_of_owned_cards_that_are_in_desired_deck += owned_card_entry[CARD_QTY_KEY]
@@ -473,6 +464,9 @@ def evaluate_owned_cards(desired_decks_list, owned_cards_list):
         else:
             owned_overlap_report[desired_deck.get_deck_name()] = {
                 SAVED_VALUE_KEY: NO_OWNED_OVERLAP_FLAG}
+    
+    progress_bar.finish()
+
     return owned_overlap_report
 
 
@@ -483,10 +477,10 @@ and return back a sorted list of the Meta decks, together with which cards and w
 :param metagame_decks: A list of Deck objects representing all of the Metagame decks on MTGGoldfish.com
 :param owned_cards: A list of dicts containing card info of the format: {CARD_QTY_KEY: card_quantity, CARD_NAME_KEY: card_name}
 """
-
-
 def evaluate_metagame_decks(metagame_decks, owned_cards):
+    progress_bar = IncrementalBar("   Evaluating", max=len(metagame_decks) * len(owned_cards), suffix='%(percent)d%%')
     metagame_deck_recommendation_report = {}
+
     for meta_deck in metagame_decks:
         specific_cards_owned_in_meta_deck = []
         number_of_owned_cards_that_are_in_meta_deck = 0
@@ -512,6 +506,8 @@ def evaluate_metagame_decks(metagame_decks, owned_cards):
                             owned_card_entry[CARD_QTY_KEY]) * meta_card_entry[CARD_PRICE_KEY]})
                     break
 
+            progress_bar.next()
+
         # Only save the report if we actually own some cards in this Metagame deck
         if value_of_meta_deck_owned > 0:
             metagame_deck_recommendation_report[meta_deck.get_deck_name()] = {
@@ -522,6 +518,8 @@ def evaluate_metagame_decks(metagame_decks, owned_cards):
     # Sort entries by value descending
     metagame_decks_sorted_by_desc_value_saved_as_list = sorted(six.iteritems(
         metagame_deck_recommendation_report), key=lambda kv: kv[1][SAVED_VALUE_KEY], reverse=True)
+    
+    progress_bar.finish()
 
     # Return only the top 15
     if len(metagame_decks_sorted_by_desc_value_saved_as_list) > 15:
@@ -535,9 +533,8 @@ For each desired deck, we process each budget deck to determine how many cards f
 are present in the given desired deck. We then store them into a large multi-level dictionary for
 eventual reporting
 """
-
-
 def evaluate_budget_decks(owned_cards, desired_decks_list, budget_decks_list):
+    progress_bar = IncrementalBar("   Evaluating", max=len(desired_decks_list) * len(budget_decks_list), suffix='%(percent)d%%')
     budget_report = {}
     for desired_deck in desired_decks_list:
         budget_report[desired_deck.get_deck_name()] = {}
@@ -608,6 +605,8 @@ def evaluate_budget_decks(owned_cards, desired_decks_list, budget_decks_list):
                 budget_report[desired_deck.get_deck_name()][budget_deck.get_deck_name()] = {DECK_PRICE_KEY: budget_deck.get_deck_price(), SHARED_CARDS_KEY: "%d/%d" % (number_of_cards_from_budget_deck_that_are_in_desired_deck, budget_deck.get_deck_size(
                 )), SHARED_VALUE_KEY: value_shared_between_decks, OWNED_CARDS_KEY: "%d/%d" % (number_of_owned_cards_that_are_in_budget_deck, budget_deck.get_deck_size()), SAVED_VALUE_KEY: value_of_budget_deck_owned, CARD_LIST_KEY: specific_owned_cards_in_budget_deck}
 
+            progress_bar.next()
+
         # Sort entries by value for this particular desired_deck now that all of the budget decks have been processed
         budget_decks_sorted_by_desc_value_as_list = sorted(six.iteritems(
             budget_report[desired_deck.get_deck_name()]), key=lambda kv: kv[1][SHARED_VALUE_KEY], reverse=True)
@@ -616,6 +615,8 @@ def evaluate_budget_decks(owned_cards, desired_decks_list, budget_decks_list):
         budget_report[desired_deck.get_deck_name(
         )] = budget_decks_sorted_by_desc_value_as_list[:5]
 
+    progress_bar.finish()
+
     return budget_report
 
 
@@ -623,8 +624,6 @@ def evaluate_budget_decks(owned_cards, desired_decks_list, budget_decks_list):
 Give a final evaluation report displaying how the cards that you own line up with the Metagame
 decks you specified desired_decks.txt
 """
-
-
 def print_owned_cards_evaluation_report(report_output_file_name, desired_decks_list, owned_cards_overlap_report, use_online_price):
 
     # This is super nasty, but whatever. We print to the file if we're actually given a file to print to. Otherwise we print to the terminal
@@ -724,8 +723,6 @@ Print a final report of the Metagame decks that you have share the most value wi
 :param metagame_deck_recommendation_report: A list of tuples containing (<deck_name>, <report_summary_for_this_deck>) pairs,
                                                    sorted descending based on the 'Saved Value' key in the <Report_summary_for_this_deck>
 """
-
-
 def print_metagame_deck_recommendation_report(report_output_file_name, metagame_deck_recommendation_report, use_online_price):
 
     # This is super nasty, but whatever. We print to the file if we're actually given a file to print to. Otherwise we print to the terminal
@@ -807,8 +804,6 @@ def print_metagame_deck_recommendation_report(report_output_file_name, metagame_
 Give a final evaluation report for the Budget decks by iterating
 over each entry and printing it out to the terminal in a clear way
 """
-
-
 def print_budget_evaluation_report(report_output_file_name, desired_decks_list, budget_deck_report, use_online_price):
 
     # This is super nasty, but whatever. We print to the file if we're actually given a file to print to. Otherwise we print to the terminal
@@ -944,8 +939,6 @@ return a tuple containing the URLs where the corresponding Metagame and Budget d
 :param desired_format: The desired Format to analyze
 :param use_online_price: True if the user wants pricing analysis to be performed in online (tix) pricing
 """
-
-
 def determine_meta_and_budget_URLs(desired_format, use_online_price):
     pricing_query_param = "#paper"
     if use_online_price:
@@ -979,39 +972,37 @@ if __name__ == "__main__":
     print("================ Beginning Fresh Run ================")
     print("=====================================================")
 
-    # Since parsing Budget decks takes FOREVER, we only do it if the user specifies the -b flag
-    parser = OptionParser(description=("This script parses decks you'd like to build into from MTGGoldfish.com listed in desired_decks.txt"
+    parser = OptionParser(description=("This script parses decks you'd like to build into from MTGGoldfish.com, listed as URLS in desired_decks.txt"
                                        " as well as any cards listed in owned_cards.txt to tell you how far along you already are to constructing"
-                                       " those decks with the cards you already own. Additionally, this script can parse all of Budget decks (of the format you specify with the -F flag) "
-                                       " listed on MTGGoldfish.com by specifying the \"-b\" flag, which will generate a report telling you the top 5"
-                                       " Budget decks that overlap the most with each of your desired decks, sorted descending by monetary overlap, NOT sheer card quantity"))
+                                       " those desired decks with the cards you already own. Additionally, this script can perform up to two additional"
+                                       " evaluations by specifying the \"-b\" and/or \"-r\" flag(s)"))
     parser.add_option("-b", "--budget",
         dest="parse_budget",
-        help="Parse all Budget decks (of the format you specify with the -F flag) from MTGGoldfish that aren't currently cached and then run an analysis as described in the README. This can take 10 minutes or more for the first run. Decks parsed this way get cached for future analysis, so that browser fetches aren't required, unless explicitly commanded to via the \"-u\" flag",
+        help="Parse all Budget decks of the desired gameplay format (specified with the -F flag) from MTGGoldfish and then run a \"Budget Deck\" analysis as described in the README. Data for any decks which have been fetched previously will not be re-fetched, unless the \"-u\" flag is specified. Likewise, any new decks fetched will have their data cached for future runs. This can take 10 minutes or more for the first run.",
         action='store_const',
         const=True)
     parser.add_option("-r", "--recommend",
         dest="recommend_meta_decks",
-        help="Parse all Metagame decks (of the format you specify with the -F flag) from MTGGoldfish that aren't currently cached and then run an analysis as described in the README. This can take 10 minutes or more for the first run. Decks parsed this way get cached for future analysis, so that browser fetches aren't required, unless explicitly commanded to via the \"-u\" flag",
+        help="Parse all Metagame decks of the desired gameplay format (specified with the -F flag) from MTGGoldfish and then run a \"Modern Metagame Deck\" analysis as described in the README. Data for any decks which have been fetched previously will not be re-fetched, unless the \"-u\" flag is specified. Likewise, any new decks fetched will have their data cached for future runs. This can take 10 minutes or more for the first run.",
         action='store_const',
         const=True)
     parser.add_option("-o", "--online",
         dest="use_online_price",
-        help="Perform all analyses using the online (tix) price of cards, instead of paper value",
+        help="If this flag is specified, all designated analyses will be run using the online (tix) value of cards instead of paper value",
         action='store_const',
         const=True)
     parser.add_option("-F", "--format",
         dest="desired_format",
         default="modern",
-        help="Specify the format you want to run the analysis for. Valid formats are (case insensitive): Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders [default: %default]",)
+        help="Specify the gameplay format you want to run the designated analyses for. Valid formats are (case insensitive): Standard | Modern | Pauper | Legacy | Vintage | Frontier | Commander 1v1 | Commander | Tiny Leaders [default: %default]",)
     parser.add_option("-u", "--update",
         dest="update_cache",
-        help="Fetches fresh data for all decks during this run. Analysis will also be provided at the end of the run. This can take 10 minutes or more",
+        help="Fetches fresh data for all decks required during this run (cache-bust). This can take 10 minutes or more",
         action='store_const',
         const=True)
     parser.add_option("-f", "--file",
         dest="print_to_file",
-        help="Informs the script to print all reports to a .txt file. The file name will be of the format: deck_report_MM_DD_YYYY.txt",
+        help="Informs the script to print all reports to a .txt file. The file name will be of the format: deck_report_MM_DD_YYYY.txt, overwriting any existing report with the same file name.",
         action='store_const',
         const=True)
     (options, args) = parser.parse_args()
@@ -1036,8 +1027,9 @@ if __name__ == "__main__":
 
     # If the User hasn't specified any cards in owned_cards.txt, then the only other reason to run this script at all is
     # to generate a report on the Budget Decks from MTGGoldfish.com. So that's what we will do.
-    no_owned_cards_in_list = len(
-        owned_cards) == 1 and owned_cards[0][CARD_NAME_KEY] == "name of card that doesn't exist"
+    no_owned_cards_in_list = (len(
+        owned_cards) == 1 and owned_cards[0][CARD_NAME_KEY] == "name of card that doesn't exist") or len(
+        owned_cards) == 0
     should_run_budget_analysis = False
     if options.parse_budget or no_owned_cards_in_list:
         should_run_budget_analysis = True
@@ -1077,8 +1069,14 @@ if __name__ == "__main__":
         budget_decks = parse_decks_from_list_of_urls(
             options.update_cache, budget_decks_url_list, options.use_online_price)
 
-    print("\nDone fetching all Deck information. Fetch took %.2f seconds" %
-          (time.time() - start_time))
+    # Print a statement about the time it took to perform the fetches
+    remaining_seconds = (time.time() - start_time)
+    num_minutes = 0
+    if remaining_seconds >= 60:
+        num_minutes = total_seconds / 60
+        remaining_seconds -= (num_minutes * 60)
+    print("\nDone fetching all Deck information. Fetch took %d minutes and %d seconds" % (
+        num_minutes, remaining_seconds))          
 
     if not no_owned_cards_in_list and len(desired_decks) != 0:
         print("\nComputing Owned Cards evaluations...")
