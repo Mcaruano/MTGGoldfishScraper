@@ -1073,7 +1073,7 @@ if __name__ == "__main__":
     remaining_seconds = (time.time() - start_time)
     num_minutes = 0
     if remaining_seconds >= 60:
-        num_minutes = total_seconds / 60
+        num_minutes = remaining_seconds / 60
         remaining_seconds -= (num_minutes * 60)
     print("\nDone fetching all Deck information. Fetch took %d minutes and %d seconds" % (
         num_minutes, remaining_seconds))          
