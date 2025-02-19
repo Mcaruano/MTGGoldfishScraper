@@ -1,7 +1,7 @@
 # MTGGoldfishScraper
 The entire point of this script is to help you determine how close you are to building the Metagame decks in the Magic Format of your choice (Modern, Standard, Commander, etc) that interest you based on the cards you currently own, as well as showing you the top five Budget decks in that Format that share the most value (paper price) with those Modern Metagame decks. MTGGoldfish.com is the source for all of the deck information.
 
-# Setup
+## Setup
 Download all of the files to the *same* directory. Namely, **mtggoldfish.py**, **owned_cards.txt**, and **desired_decks.txt**. It doesn't matter if you do proper git things and clone this repository, or if you simply copy and paste the files, the important thing is that they must all be in the same directory on your computer.
 ## OSX
 1. Install the Selenium Python library
