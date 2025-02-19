@@ -13,6 +13,7 @@ import os
 from progress.bar import IncrementalBar
 import re
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import sys
 import time
@@ -296,8 +297,9 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price
             sys.exit(0)
 
         deck.deck_url = deck_url
-        raw_deck_name_parse = driver.find_element_by_class_name(
-            "deck-view-title").get_attribute('textContent').replace('\n', '')
+        # find_element_by_class_name method has been deprecated. Replaced with newer Selenium method.
+        raw_deck_name_parse = driver.find_element(By.CLASS_NAME,
+            "title").get_attribute('textContent').replace('\n', '')
 
         # The formatting of the name field is different on the meta page vs the budget pages. On the budget pages it is followed with
         # "by <author>" while on the meta pages it is followed by "Suggest a Better Name"
@@ -308,8 +310,11 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price
             deck.deck_name = raw_deck_name_parse[:-
                                                  len("Suggest a Better Name")].encode('ascii')
 
-        deck_date_as_string = driver.find_element_by_class_name(
-            "deck-view-description").get_attribute('textContent').replace('\n', '')[-len("MMM DD, YYYY"):]
+        # Changed _by_class_name to new (By.CLASS_NAME, to reflect updated Selenium method.
+        deck_date_as_string = driver.find_element(By.CLASS_NAME, 
+            "deck-container-information").get_attribute('textContent').replace('\n', '')[-len("MMM DD, YYYY"):]
+        # The website uses "9" instead of "09" for date, we need to strip whitespace before parsing the date.   
+        deck_date_as_string = deck_date_as_string.strip()
         deck.deck_date = datetime.strptime(deck_date_as_string, '%b %d, %Y')
 
         # Iterate over all of the rows in the deck list and build the deck object
@@ -318,12 +323,14 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price
         price_tab_element_tag = 'tab-paper'
         if use_online_price:
             price_tab_element_tag = 'tab-online'
-        rows_element = driver.find_element_by_id(price_tab_element_tag).find_element_by_class_name(
-            'deck-view-decklist').find_element_by_class_name('deck-view-decklist-inner')
-        rows_element = rows_element.find_element_by_class_name(
-            "deck-view-deck-table").find_element_by_tag_name("tbody").find_elements_by_tag_name("tr")
-        for row in rows_element:
-            columns = row.find_elements_by_tag_name("td")
+        # Same Selenium method to update the "(By.CLASS_NAME," also applies to "(By,TAG_NAME,".
+        # The website appears to have undergone changes to its structure. I've updated
+            # all the CLASS_NAMES and TAG_NAMES to be able to locate and scrape the desired data.
+        rows_element = driver.find_element(By.CLASS_NAME, "deck-table-container")
+        table_body = rows_element.find_element(By.TAG_NAME, "tbody")
+        rows = table_body.find_elements(By.TAG_NAME, "tr")
+        for row in rows:
+            columns = row.find_elements(By.TAG_NAME, "td")
 
             # Disregard any of the section title rows such as "Creatures", "Planeswalkers", etc
             if len(columns) == 4:
@@ -338,10 +345,16 @@ def parse_decks_from_list_of_urls(update_cache, deck_URLs_list, use_online_price
                     'textContent').replace('\n', '')
                 card_price_string = columns[PRICE_INDEX].get_attribute(
                     'textContent').replace('\n', '')
+                
                 if card_quantity_string == '':
                     card_quantity_string = '1'
                 if card_price_string == '':
                     card_price_string = '0'
+                # The price kept returning "\xa0" (Fun Fact: \xa0 is unicode for a non-breaking space) 
+                # To fix, I cleaned the string to be able to return a float.
+                else:
+                    card_price_string = card_price_string.replace('\xa0', '').replace('$', '')
+
                 card_quantity = int(card_quantity_string)
                 individual_card_price = float(
                     card_price_string.replace(',', '')) / float(card_quantity)
@@ -395,17 +408,20 @@ def parse_deck_urls_from_category_landing_page(category_landing_page_url):
     driver = webdriver.Firefox()
     driver.get(category_landing_page_url)
 
+    # I didn't change the element names for either paper, online, or budget decks. 
+    # However, it appears that functionality didn't break here, even with the old class names and tags.
     deck_URL_container_element_tag = "deck-price-paper"
     if "#online" in category_landing_page_url.lower():
         deck_URL_container_element_tag = "deck-price-online"
 
     budget_deck_url_list = []
     try:
-        deck_tiles = driver.find_elements_by_class_name("archetype-tile")
+        # Update Selenenium method from "_by_class_name" to "(By.CLASS_NAME,"/"(By.TAG_NAME,"
+        deck_tiles = driver.find_elements(By.CLASS_NAME, "archetype-tile")
         for tile in deck_tiles:
-            deck_description_container = tile.find_element_by_class_name("archetype-tile-description-wrapper").find_element_by_class_name(
-                "archetype-tile-description").find_element_by_class_name(deck_URL_container_element_tag)
-            deck_url = deck_description_container.find_element_by_tag_name(
+            deck_description_container = tile.find_element(By.CLASS_NAME, "archetype-tile-description-wrapper").find_element(By.CLASS_NAME, 
+                "archetype-tile-description").find_element(By.CLASS_NAME, deck_URL_container_element_tag)
+            deck_url = deck_description_container.find_element(By.TAG_NAME, 
                 'a').get_attribute("href")
 
             # For some reason, the #paper landing page contains URLS for the #online

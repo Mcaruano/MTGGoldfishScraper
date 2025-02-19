@@ -4,7 +4,79 @@
 # No quotes. No hyphens. Capitalization doesn't matter. I've provided an example for your reference
 # of a card that doesn't exist.
 
+# Sample card data to test.
 4 name of card that doesn't exist
-1 True-Name Nemesis
-3 Badlands
-2 Chromatic Star
+3 Patchwork Beastie
+4 Pawpatch Recruit
+2 Draconautics Engineer
+1 Fear of Missing Out
+0 Inti, Seneschal of the Sun
+5 Questing Druid
+3 Afterburner Expert
+1 Wrenn and Realmbreaker
+4 Seed of Hope
+3 Torch the Tower
+0 Obliterating Bolt
+5 Scorching Shot
+2 Dredger's Insight
+2 Commercial District
+1 Copperline Gorge
+4 Forest
+0 Karplusan Forest
+3 Mountain
+5 Restless Ridgeline
+1 Thornspire Verge
+0 Pick Your Poison
+3 Abrade
+4 Agatha's Soul Cauldron
+2 Keen-Eyed Curator
+3 Pawpatch Formation
+1 Pyroclasm
+2 Screaming Nemesis
+1 Tranquil Frillback
+0 Lukka, Bound to Ruin
+3 Zur, Eternal Schemer
+0 Overlord of the Hauntwoods
+5 Overlord of the Boilerbilges
+2 Overlord of the Mistmoors
+4 Analyze the Pollen
+1 Elspeth's Smite
+1 Get Lost
+5 Split Up
+3 Ride's End
+4 Herd Migration
+0 Up the Beanstalk
+2 Leyline Binding
+5 Cavern of Souls
+2 Elegant Parlor
+4 Floodfarm Verge
+3 Hushwood Verge
+5 Island
+2 Lush Portico
+4 Plains
+1 Shadowy Backstreet
+3 Sunbillow Verge
+4 Swamp
+5 Underground Mortuary
+3 Ghost Vacuum
+1 Doppelgang
+4 Lightning Helix
+2 Heartfire Hero
+1 Hired Claw
+4 Monastery Swiftspear
+3 Emberheart Challenger
+5 Manifold Mouse
+2 Burst Lightning
+5 Monstrous Rage
+3 Shock
+1 Rockface Village
+2 Lithomantic Barrage
+1 Thunderous Velocipede
+3 Bitter Reunion
+2 Break Out
+4 Beastie Beatdown
+3 Violent Urge
+4 Wildfire Wickerfolk
+2 Chandra, Spark Hunter
+4 Witchstalker Frenzy
+5 Haywire Mite
